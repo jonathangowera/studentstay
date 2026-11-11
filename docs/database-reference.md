@@ -186,3 +186,7 @@ Session expiry is not enforced yet. The PRD default (OD-04: 30 minutes for staff
 5. Update this file and `docs/StudentStay_Database_Design_v0.9.docx` in the same pull request.
 6. After any change, regenerate the TypeScript types (see CLAUDE.md).
 7. The migration history in the Supabase dashboard uses different timestamps from the file names, because migrations were applied through the dashboard and connector. Do not run supabase db push without repairing the history first. Ask before using the Supabase command line.
+
+## Known gaps
+- Owners cannot read `moderation_note` on `listings`. S2 will add a view limited to listings the person manages.
+- The `shortlist` table does not restrict inserts to students at database level. The screens hide the heart for owners. A later migration will restrict it.
