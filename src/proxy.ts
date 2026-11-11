@@ -2,6 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
 import { isProtectedPath, signInUrlFor } from "@/lib/auth/roles";
 
+// TODO(OD-04): session expiry (staff 30 minutes, students 12 hours) is not enforced.
+// It needs Supabase Pro (one project-wide inactivity timeout) or a decision on server-side enforcement.
+// See "Sessions" in docs/database-reference.md.
 export async function proxy(request: NextRequest) {
   const { response, signedIn } = await updateSession(request);
   const { pathname, search } = request.nextUrl;
