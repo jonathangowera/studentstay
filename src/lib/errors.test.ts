@@ -104,3 +104,28 @@ describe("makeReference", () => {
     expect(ref).not.toMatch(/[01IOL]/);
   });
 });
+
+describe("S4 application errors", () => {
+  it("maps the one-open-application index to the duplicate message, not the student number one", () => {
+    const err = {
+      code: "23505",
+      message: 'duplicate key value violates unique constraint "applications_one_open_per_listing"',
+      details: "Key (student_id, listing_id)=(...) already exists.",
+    };
+    expect(extractErrorCode(err)).toBe("DUPLICATE_APPLICATION");
+    expect(toFriendlyError(err).message).toBe("You already have an open application to this place.");
+  });
+
+  it("maps EMAIL_NOT_VERIFIED by its code even though the SQLSTATE is 42501", () => {
+    const err = { code: "42501", message: "EMAIL_NOT_VERIFIED: verify your email before applying" };
+    expect(extractErrorCode(err)).toBe("EMAIL_NOT_VERIFIED");
+    expect(toFriendlyError(err).message).toBe("Verify your email before applying.");
+  });
+
+  it("has friendly wording for the app-level checks", () => {
+    expect(toFriendlyError({ message: "UNIVERSITY_APPLICATION_OPEN: one at a time" }).message).toBe(
+      "You already have an open university allocation application.",
+    );
+    expect(toFriendlyError({ message: "WITHDRAW_NOT_ALLOWED: closed" }).message).toBe("This application can no longer be withdrawn.");
+  });
+});

@@ -40,6 +40,11 @@ export const MESSAGES: Record<string, string> = {
   "23P01": "That overlaps with an existing booking.",
   "23505": "That record already exists.",
   STUDENT_NUMBER_TAKEN: "This student number cannot be used. Check it, or contact your accommodation office.",
+  DUPLICATE_APPLICATION: "You already have an open application to this place.",
+
+  // App-level checks (not raised by the database)
+  UNIVERSITY_APPLICATION_OPEN: "You already have an open university allocation application.",
+  WITHDRAW_NOT_ALLOWED: "This application can no longer be withdrawn.",
 
   // Supabase Auth codes
   invalid_credentials: "Email or password is incorrect.",
@@ -64,6 +69,8 @@ export const MESSAGES: Record<string, string> = {
 /** Constraint names that need a more specific message than their SQLSTATE. */
 const CONSTRAINT_CODES: Record<string, string> = {
   profiles_student_number_uq: "STUDENT_NUMBER_TAKEN",
+  // unique index: one open application per student and listing (FR4.7)
+  applications_one_open_per_listing: "DUPLICATE_APPLICATION",
 };
 
 const PREFIX = /^([A-Z][A-Z0-9_]{2,}):/;
