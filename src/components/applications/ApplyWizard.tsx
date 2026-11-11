@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { submitApplication, type ApplyState } from "@/app/actions/applications";
 import { Callout } from "@/components/ui/Callout";
 import { FieldError } from "@/components/ui/FieldError";
@@ -42,6 +42,14 @@ type Props = {
 
 const STEPS = ["Route", "Your details", "Review"] as const;
 
+const noop = () => () => {};
+
+/** The first step with a field error after a server reply, or the review step. */
+function errorStep(state: ApplyState): number {
+  const steps = Object.keys(state.errors ?? {}).map((k) => FIELD_STEP[k] ?? 2);
+  return steps.length ? Math.min(...steps) : 2;
+}
+
 /** The step that holds each field, so a server error can open the right step. */
 const FIELD_STEP: Record<string, number> = {
   route: 0,
@@ -67,21 +75,21 @@ export function ApplyWizard(props: Props) {
   const [route, setRoute] = useState<ApplicationRoute>(props.fixedRoute ?? (privateOffered ? "private" : "university_allocation"));
   const [v, setV] = useState<WizardValues>(props.initial);
   const [step, setStep] = useState(0);
-  const [stepped, setStepped] = useState(false);
+  // One step at a time only once JavaScript is running. False during the server render and without JavaScript.
+  const stepped = useSyncExternalStore(noop, () => true, () => false);
+  // A new server reply with an error opens the step that needs fixing (adjusting state while rendering).
+  const [reply, setReply] = useState(state);
+  if (reply !== state) {
+    setReply(state);
+    if (state.status === "error") setStep(errorStep(state));
+  }
   const [stepError, setStepError] = useState<string | null>(null);
   const headings = useRef<(HTMLHeadingElement | null)[]>([]);
   const e = state.errors ?? {};
 
-  // Show one step at a time only once JavaScript is running.
-  useEffect(() => setStepped(true), []);
-
-  // A server error: open the first step that has a field error, or stay on review.
+  // After a server error, move focus to the heading of the step that was opened.
   useEffect(() => {
-    if (state.status !== "error") return;
-    const steps = Object.keys(state.errors ?? {}).map((k) => FIELD_STEP[k] ?? 2);
-    const target = steps.length ? Math.min(...steps) : 2;
-    setStep(target);
-    headings.current[target]?.focus();
+    if (state.status === "error") headings.current[errorStep(state)]?.focus();
   }, [state]);
 
   const set = <K extends keyof WizardValues>(k: K, value: WizardValues[K]) => setV((x) => ({ ...x, [k]: value }));
