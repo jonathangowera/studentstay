@@ -348,7 +348,8 @@ input[type="email"],
 input[type="password"],
 input[type="number"],
 input[type="tel"],
-select {
+select,
+textarea {
   width: 100%;
   min-height: 2.75rem;
   padding: 0.5rem 0.8rem;
@@ -360,11 +361,13 @@ select {
   font-size: 0.9375rem;
 }
 input[aria-invalid="true"],
-select[aria-invalid="true"] {
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
   border-color: var(--bad);
 }
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible {
   outline: 2px solid var(--pri);
   outline-offset: 1px;
   border-color: var(--pri);
@@ -1174,3 +1177,4 @@ dialog.dlg::backdrop { background: rgba(15, 30, 61, 0.45); }
 .dlg-h h2 { font-size: 1.125rem; }
 .dlg-b { padding: 0.5rem 1.25rem 1rem; display: grid; gap: 0.9rem; }
 .dlg-f { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 0.9rem 1.25rem; border-top: 1px solid var(--line); background: var(--surface-2); border-radius: 0 0 var(--r3) var(--r3); flex-wrap: wrap; }
+textarea { resize: vertical; line-height: 1.5; }
