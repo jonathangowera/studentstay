@@ -46,7 +46,6 @@ export function PublicFooter() {
         <p>
           <b>Demonstration data. Payments are simulated.</b> No real transactions occur.
         </p>
-        <p>StudentStay (working name). A final-year student project.</p>
       </div>
     </footer>
   );
