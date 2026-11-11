@@ -3,10 +3,12 @@
  *
  * parseListingFilters  URL search params -> validated filters (bad values are dropped, never thrown)
  * filtersToParams      filters -> URL search params (the reverse; used for links)
+ * roomMatchFor         filters -> the room-level match needed when a room type AND a budget are both set (or null)
+ * roomQueryPlan        room match -> filters for the rooms table (the listing ids it returns feed the next step)
  * listingQueryPlan     filters -> a plain description of the database query (filters, order, page range)
  *
- * The plan is applied to the listing_cards view by src/lib/listings/queries.ts. It is plain data so it can be
- * unit tested without a database. All filtering happens in the database, never in the browser.
+ * The plans are applied by src/server/listings.ts. They are plain data so they can be unit tested without a
+ * database. All filtering happens in the database, never in the browser.
  */
 import {
   GENDERS,
@@ -217,27 +219,62 @@ function orderFor(sort: Sort, institution: string | null): OrderOp[] {
   }
 }
 
-export function listingQueryPlan(f: ListingFilters, pageSize: number = PAGE_SIZE): QueryPlan {
+/**
+ * Room type and budget together must be met by ONE room: "double, up to K1,500" needs a double room priced at
+ * K1,500 or less. The listing_cards columns cannot say that (price_from may come from a cheap triple), so in that
+ * case the search first finds the matching rooms and then shows only their listings.
+ * With "only free beds" ticked as well, the free bed must be in that same room.
+ */
+export type RoomMatch = { roomTypes: RoomType[]; min: number | null; max: number | null; freeBedsOnly: boolean };
+
+export function roomMatchFor(f: ListingFilters): RoomMatch | null {
+  if (!f.rooms.length || (f.min === null && f.max === null)) return null;
+  return { roomTypes: [...f.rooms], min: f.min, max: f.max, freeBedsOnly: f.freeOnly };
+}
+
+/** Filters for the rooms table. "beds.state" filters the room's embedded beds (an inner join when used). */
+export function roomQueryPlan(m: RoomMatch): FilterOp[] {
+  // TODO(OD): hostel prices are per term and are compared as stored. The term length is an open decision.
+  const ops: FilterOp[] = [{ op: "in", column: "room_type", value: [...m.roomTypes] }];
+  if (m.max !== null) ops.push({ op: "lte", column: "price_zmw", value: m.max });
+  if (m.min !== null) ops.push({ op: "gte", column: "price_zmw", value: m.min });
+  if (m.freeBedsOnly) ops.push({ op: "eq", column: "beds.state", value: "available" });
+  return ops;
+}
+
+export type PlanOptions = {
+  pageSize?: number;
+  /** Listing ids found with roomQueryPlan. Required when roomMatchFor(filters) is not null. */
+  roomListingIds?: readonly string[];
+};
+
+export function listingQueryPlan(f: ListingFilters, opts: PlanOptions = {}): QueryPlan {
+  const pageSize = opts.pageSize ?? PAGE_SIZE;
   const filters: FilterOp[] = [];
+  const roomMatch = roomMatchFor(f);
+  if (roomMatch && !opts.roomListingIds) throw new Error("listingQueryPlan: room type with a budget needs roomListingIds");
 
   // Institution: places that list a distance to that campus.
   if (f.institution) filters.push({ op: "notNull", column: `distances->${f.institution}` });
   if (f.area) filters.push({ op: "eq", column: "area", value: f.area });
 
-  // Budget: the listing's price range overlaps the budget range.
-  // TODO(OD): hostel prices are per term and are compared as stored. The term length is an open decision.
-  // Note: with a room type filter too, the budget is matched against the whole listing, not that room type.
-  if (f.max !== null) filters.push({ op: "lte", column: "price_from", value: f.max });
-  if (f.min !== null) filters.push({ op: "gte", column: "price_to", value: f.min });
+  if (roomMatch) {
+    // Room type and budget (and the free bed, when asked) were matched room by room. Keep only those listings.
+    filters.push({ op: "in", column: "id", value: [...new Set(opts.roomListingIds)] });
+  } else {
+    // Budget alone: the listing's price range overlaps the budget range.
+    // TODO(OD): hostel prices are per term and are compared as stored. The term length is an open decision.
+    if (f.max !== null) filters.push({ op: "lte", column: "price_from", value: f.max });
+    if (f.min !== null) filters.push({ op: "gte", column: "price_to", value: f.min });
+    // Room type alone: any of the chosen types. With "only free beds", that type must have a free bed.
+    if (f.rooms.length) {
+      filters.push({ op: "overlaps", column: f.freeOnly ? "free_room_types" : "room_types", value: [...f.rooms] });
+    }
+  }
 
   if (f.types.length) filters.push({ op: "in", column: "type", value: [...f.types] });
   if (f.genders.length) filters.push({ op: "in", column: "gender", value: [...f.genders] });
   if (f.facilities.length) filters.push({ op: "contains", column: "facilities", value: [...f.facilities] });
-
-  // Room type: any of the chosen types. With "only free beds", the type must have a free bed.
-  if (f.rooms.length) {
-    filters.push({ op: "overlaps", column: f.freeOnly ? "free_room_types" : "room_types", value: [...f.rooms] });
-  }
   if (f.freeOnly) filters.push({ op: "gt", column: "beds_available", value: 0 });
   if (f.hideStale) filters.push({ op: "eq", column: "is_stale", value: false });
 

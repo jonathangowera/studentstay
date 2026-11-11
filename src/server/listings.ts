@@ -15,7 +15,7 @@ import { reportError } from "@/lib/errors";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
-import { listingQueryPlan, type ListingFilters, type QueryPlan } from "@/lib/listings/filters";
+import { listingQueryPlan, roomMatchFor, roomQueryPlan, type ListingFilters, type QueryPlan } from "@/lib/listings/filters";
 import { isUuid } from "@/lib/listings/compare";
 import type { BedState, RoomType } from "@/lib/listings/labels";
 
@@ -69,8 +69,15 @@ type Chain = {
 };
 
 export function applyPlan<Q>(query: Q, plan: QueryPlan): Q {
+  let q = applyFilters(query, plan.filters) as unknown as Chain;
+  for (const o of plan.order) q = q.order(o.column, { ascending: o.ascending, nullsFirst: o.nullsFirst });
+  q = q.range(plan.from, plan.to);
+  return q as unknown as Q;
+}
+
+function applyFilters<Q>(query: Q, ops: QueryPlan["filters"]): Q {
   let q = query as unknown as Chain;
-  for (const f of plan.filters) {
+  for (const f of ops) {
     switch (f.op) {
       case "eq":
         q = q.eq(f.column, f.value);
@@ -98,19 +105,35 @@ export function applyPlan<Q>(query: Q, plan: QueryPlan): Q {
         break;
     }
   }
-  for (const o of plan.order) q = q.order(o.column, { ascending: o.ascending, nullsFirst: o.nullsFirst });
-  q = q.range(plan.from, plan.to);
   return q as unknown as Q;
+}
+
+/**
+ * Ids of listings with one room that matches the room type and budget (and has a free bed, when asked).
+ * Row-level security applies, and listing_cards stays the published-only gate in the next query.
+ */
+async function listingIdsWithMatchingRoom(supabase: Client, filters: ListingFilters): Promise<string[] | undefined> {
+  const match = roomMatchFor(filters);
+  if (!match) return undefined;
+  // Named columns only. beds!inner keeps only rooms with at least one bed that passes the beds.state filter.
+  const columns = match.freeBedsOnly ? "listing_id, beds!inner(id)" : "listing_id";
+  const { data, error } = await applyFilters(supabase.from("rooms").select(columns), roomQueryPlan(match));
+  if (error) throw error;
+  return [...new Set(((data ?? []) as unknown as { listing_id: string }[]).map((r) => r.listing_id))];
 }
 
 export type SearchResult = { rows: ListingCardData[]; total: number; ms: number };
 
-/** One round trip: filtered, sorted, paged rows plus the exact total. */
+/** Filtered, sorted, paged rows plus the exact total. One round trip, or two when room type and budget are both set. */
 export async function searchListings(filters: ListingFilters, client?: Client): Promise<SearchResult> {
   const supabase = client ?? (await createClient());
   const started = performance.now();
+  const roomListingIds = await listingIdsWithMatchingRoom(supabase, filters);
+  if (roomListingIds && roomListingIds.length === 0) {
+    return { rows: [], total: 0, ms: Math.round(performance.now() - started) };
+  }
   const base = supabase.from("listing_cards").select(CARD_COLUMNS, { count: "exact" });
-  const { data, count, error } = await applyPlan(base, listingQueryPlan(filters));
+  const { data, count, error } = await applyPlan(base, listingQueryPlan(filters, { roomListingIds }));
   const ms = Math.round(performance.now() - started);
   if (error) throw error;
   return { rows: withId(data), total: count ?? 0, ms };

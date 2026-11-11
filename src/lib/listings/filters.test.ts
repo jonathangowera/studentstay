@@ -9,6 +9,9 @@ import {
   pageCount,
   pageNumbers,
   parseListingFilters,
+  roomMatchFor,
+  roomQueryPlan,
+  type FilterOp,
 } from "./filters";
 
 const parse = (qs: string) => parseListingFilters(new URLSearchParams(qs));
@@ -120,7 +123,7 @@ describe("listingQueryPlan", () => {
 
   it("turns each filter into a database filter", () => {
     const plan = listingQueryPlan(
-      parse("institution=UNZA&area=Kalingalinga&min=500&max=2000&type=private_rental&gender=female_only&facilities=wifi,guard&room=double&fresh=1"),
+      parse("institution=UNZA&area=Kalingalinga&min=500&max=2000&type=private_rental&gender=female_only&facilities=wifi,guard&fresh=1"),
     );
     expect(plan.filters).toEqual([
       { op: "notNull", column: "distances->UNZA" },
@@ -130,8 +133,13 @@ describe("listingQueryPlan", () => {
       { op: "in", column: "type", value: ["private_rental"] },
       { op: "in", column: "gender", value: ["female_only"] },
       { op: "contains", column: "facilities", value: ["wifi", "guard"] },
-      { op: "overlaps", column: "room_types", value: ["double"] },
       { op: "eq", column: "is_stale", value: false },
+    ]);
+  });
+
+  it("uses the room types column for a room type without a budget", () => {
+    expect(listingQueryPlan(parse("room=double")).filters).toEqual([
+      { op: "overlaps", column: "room_types", value: ["double"] },
     ]);
   });
 
@@ -183,5 +191,109 @@ describe("listingQueryPlan", () => {
     expect(pageCount(0)).toBe(1);
     expect(pageCount(12)).toBe(1);
     expect(pageCount(13)).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------- room type and budget together
+
+type FakeRoom = { listing_id: string; room_type: string; price_zmw: number; beds: { state: string }[] };
+type FakeCard = { id: string; room_types: string[]; free_room_types: string[]; price_from: number; price_to: number; beds_available: number };
+
+/** A tiny stand-in for PostgREST: does a row pass every filter in a plan? */
+function passes(row: Record<string, unknown>, ops: FilterOp[]): boolean {
+  return ops.every((f) => {
+    if (f.column === "beds.state" && f.op === "eq") return (row.beds as { state: string }[]).some((b) => b.state === f.value);
+    const v = row[f.column];
+    switch (f.op) {
+      case "eq":
+        return v === f.value;
+      case "gt":
+        return (v as number) > f.value;
+      case "gte":
+        return (v as number) >= f.value;
+      case "lte":
+        return (v as number) <= f.value;
+      case "in":
+        return f.value.includes(v as string);
+      case "contains":
+        return f.value.every((x) => (v as string[]).includes(x));
+      case "overlaps":
+        return f.value.some((x) => (v as string[]).includes(x));
+      case "notNull":
+        return v !== null && v !== undefined;
+    }
+  });
+}
+
+/** Runs the search the way src/server/listings.ts does: rooms first when needed, then the cards. */
+function search(qs: string, rooms: FakeRoom[], cards: FakeCard[]): string[] {
+  const f = parse(qs);
+  const match = roomMatchFor(f);
+  const roomListingIds = match ? rooms.filter((r) => passes(r, roomQueryPlan(match))).map((r) => r.listing_id) : undefined;
+  const plan = listingQueryPlan(f, { roomListingIds });
+  return cards.filter((c) => passes(c, plan.filters)).map((c) => c.id);
+}
+
+describe("room type and budget together", () => {
+  // Cheap triple, expensive double: the listing's price_from (900) is inside the budget, but its double is not.
+  const mixed: FakeRoom[] = [
+    { listing_id: "mixed", room_type: "triple", price_zmw: 900, beds: [{ state: "available" }] },
+    { listing_id: "mixed", room_type: "double", price_zmw: 2100, beds: [{ state: "available" }] },
+  ];
+  // A double inside the budget, but its only free bed is in the single room.
+  const fullDouble: FakeRoom[] = [
+    { listing_id: "full", room_type: "double", price_zmw: 1200, beds: [{ state: "occupied" }, { state: "held" }] },
+    { listing_id: "full", room_type: "single", price_zmw: 2500, beds: [{ state: "available" }] },
+  ];
+  const good: FakeRoom[] = [{ listing_id: "good", room_type: "double", price_zmw: 1350, beds: [{ state: "available" }] }];
+  const rooms = [...mixed, ...fullDouble, ...good];
+  const cards: FakeCard[] = [
+    { id: "mixed", room_types: ["double", "triple"], free_room_types: ["double", "triple"], price_from: 900, price_to: 2100, beds_available: 2 },
+    { id: "full", room_types: ["double", "single"], free_room_types: ["single"], price_from: 1200, price_to: 2500, beds_available: 1 },
+    { id: "good", room_types: ["double"], free_room_types: ["double"], price_from: 1350, price_to: 1350, beds_available: 1 },
+  ];
+
+  it("reproduces the old bug: listing columns alone match a cheap triple with an expensive double", () => {
+    const oldFilters: FilterOp[] = [
+      { op: "lte", column: "price_from", value: 1500 },
+      { op: "overlaps", column: "room_types", value: ["double"] },
+    ];
+    expect(cards.filter((c) => passes(c, oldFilters)).map((c) => c.id)).toContain("mixed");
+  });
+
+  it("does not match a listing whose double costs more than the budget", () => {
+    expect(search("room=double&max=1500", rooms, cards)).toEqual(["full", "good"]);
+  });
+
+  it("needs the free bed in the matching room when only free beds are wanted", () => {
+    expect(search("room=double&max=1500&free=1", rooms, cards)).toEqual(["good"]);
+  });
+
+  it("applies a minimum budget to the room price too", () => {
+    expect(search("room=double&min=2000", rooms, cards)).toEqual(["mixed"]);
+  });
+
+  it("matches nothing when no room fits", () => {
+    expect(search("room=double&max=500", rooms, cards)).toEqual([]);
+  });
+
+  it("builds the rooms filters and replaces the listing budget and room type filters with the ids", () => {
+    const f = parse("room=double&max=1500&free=1");
+    const match = roomMatchFor(f);
+    expect(match && roomQueryPlan(match)).toEqual([
+      { op: "in", column: "room_type", value: ["double"] },
+      { op: "lte", column: "price_zmw", value: 1500 },
+      { op: "eq", column: "beds.state", value: "available" },
+    ]);
+    expect(listingQueryPlan(f, { roomListingIds: ["a", "b", "a"] }).filters).toEqual([
+      { op: "in", column: "id", value: ["a", "b"] },
+      { op: "gt", column: "beds_available", value: 0 },
+    ]);
+  });
+
+  it("refuses to plan a room type with a budget without the room listing ids", () => {
+    expect(() => listingQueryPlan(parse("room=double&max=1500"))).toThrow();
+    expect(roomMatchFor(parse("room=double"))).toBeNull();
+    expect(roomMatchFor(parse("max=1500"))).toBeNull();
   });
 });
