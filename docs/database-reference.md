@@ -167,6 +167,16 @@ Failures start with a code and a colon, for example `BED_UNAVAILABLE: this bed i
 | `BED_NOT_FOUND`, `RUN_NOT_FOUND`, `TICKET_NOT_FOUND`, `BAD_DECISION`, `BAD_STATE` | Bad input | Something went wrong. |
 | `AUDIT_IMMUTABLE` | Someone tried to change the audit log | Treat as a bug. |
 | SQLSTATE `23505` on `profiles_student_number_uq` | The student number is already used at that institution | This student number cannot be used. Check it, or contact your accommodation office. (Does not confirm that someone else has it.) |
+| SQLSTATE `23505` on `applications_one_open_per_listing` | The student already has an open application to that listing | You already have an open application to this place. (Link to it.) |
+| `EMAIL_NOT_VERIFIED` from `submit_application` | Raised with SQLSTATE `42501`. Match the code before the colon, not the SQLSTATE | Verify your email before applying. |
+| `INVALID_TRANSITION` from `withdraw_application` | The application is already closed | This application can no longer be withdrawn. |
+
+App-level checks (not raised by the database, mapped in `src/lib/errors.ts`):
+| Code | Meaning | Message |
+|---|---|---|
+| `UNIVERSITY_APPLICATION_OPEN` | The student already has an open university allocation application | You already have an open university allocation application. (Link to it.) |
+| `WITHDRAW_NOT_ALLOWED` | `state_transitions` has no move from this status to `withdrawn` | This application can no longer be withdrawn. |
+
 Also expect `23514` (a check failed) and `23P01` (an overlap).
 
 ## Defaults the database already applies
@@ -188,5 +198,8 @@ Session expiry is not enforced yet. The PRD default (OD-04: 30 minutes for staff
 7. The migration history in the Supabase dashboard uses different timestamps from the file names, because migrations were applied through the dashboard and connector. Do not run supabase db push without repairing the history first. Ask before using the Supabase command line.
 
 ## Known gaps
+- One open university allocation application per student is checked in the app only (`src/lib/applications/rules.ts`). The unique index `applications_one_open_per_listing` does not cover it, because university applications have no `listing_id`. A database rule can come later.
+- Notification links written by the database use `/applications/<reference>`. The app redirects them to `/student/applications/<reference>` (only for references like `APP-2026-0412`).
+- `submit_application` reads institution and student number from the student's profile, not the application. The apply wizard saves them to the profile first, which resets the profile's confirmation (`student_number_matched`).
 - Owners cannot read `moderation_note` on `listings`. S2 will add a view limited to listings the person manages.
 - The `shortlist` table does not restrict inserts to students at database level. The screens hide the heart for owners. A later migration will restrict it.
