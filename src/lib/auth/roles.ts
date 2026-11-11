@@ -70,7 +70,6 @@ export function safeNextPath(next: string | null | undefined): string | null {
   if (!next.startsWith("/") || next.startsWith("//")) return null;
   // Browsers treat "\" like "/", so "/\evil.example" can become "//evil.example".
   if (next.includes("\\")) return null;
-  // eslint-disable-next-line no-control-regex
   if (/[\u0000-\u001f\u007f]/.test(next)) return null;
   let url: URL;
   try {
