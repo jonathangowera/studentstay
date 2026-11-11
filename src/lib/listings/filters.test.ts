@@ -7,6 +7,7 @@ import {
   listingQueryPlan,
   listingsHref,
   pageCount,
+  pageNumbers,
   parseListingFilters,
 } from "./filters";
 
@@ -167,6 +168,13 @@ describe("listingQueryPlan", () => {
     const f = parse("sort=distance");
     expect(effectiveSort(f)).toEqual({ sort: "best", distanceNeedsInstitution: true });
     expect(listingQueryPlan(f).order[0].column).toBe("beds_available");
+  });
+
+  it("lists page links with gaps", () => {
+    expect(pageNumbers(1, 1)).toEqual([1]);
+    expect(pageNumbers(1, 3)).toEqual([1, 2, 3]);
+    expect(pageNumbers(5, 10)).toEqual([1, "gap", 4, 5, 6, "gap", 10]);
+    expect(pageNumbers(10, 10)).toEqual([1, "gap", 9, 10]);
   });
 
   it("pages 12 at a time", () => {

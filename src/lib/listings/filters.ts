@@ -249,3 +249,15 @@ export function listingQueryPlan(f: ListingFilters, pageSize: number = PAGE_SIZE
 export function pageCount(total: number, pageSize: number = PAGE_SIZE): number {
   return Math.max(1, Math.ceil(total / pageSize));
 }
+
+/** Page links to show: first, last, and one either side of the current page, with gaps between. */
+export function pageNumbers(current: number, total: number): (number | "gap")[] {
+  const keep = new Set([1, total, current - 1, current, current + 1].filter((n) => n >= 1 && n <= total));
+  const sorted = [...keep].sort((a, b) => a - b);
+  const out: (number | "gap")[] = [];
+  sorted.forEach((n, i) => {
+    if (i > 0 && n - sorted[i - 1] > 1) out.push("gap");
+    out.push(n);
+  });
+  return out;
+}

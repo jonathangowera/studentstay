@@ -947,6 +947,9 @@ dl.facts dd {
 .cmpbar { position: sticky; bottom: 0.75rem; margin-top: 1rem; display: flex; gap: 0.5rem 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; background: var(--ink); color: #fff; padding: 0.7rem 1rem; border-radius: var(--rcard); box-shadow: var(--sh2); z-index: 20; }
 .cmpbar .msg { color: #ffd9a8; font-weight: 600; font-size: 0.8125rem; display: flex; gap: 0.35rem; align-items: center; }
 .cmpbar :focus-visible { outline-color: #fff; }
+.cmpbar[hidden] { display: none; }
+.cmpbar .btn.ghost { color: #fff; }
+.cmpbar .btn.ghost:hover { background: rgba(255, 255, 255, 0.14); }
 @media (max-width: 960px) {
   .lay { grid-template-columns: 1fr; }
   .filters { position: static; }
