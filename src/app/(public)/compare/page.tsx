@@ -11,6 +11,7 @@ import { reportError, type FriendlyError } from "@/lib/errors";
 import { formatKm, priceRange } from "@/lib/format";
 import { MAX_COMPARE, compareHref, lowestPriceIds, nearestIds, parseCompareIds } from "@/lib/listings/compare";
 import { GENDER_LABEL, ROOM_TYPE_LABEL, distanceEntries, institutionShortName } from "@/lib/listings/labels";
+import type { RoomTypeRange } from "@/lib/listings/rooms";
 import { cardsByIds, institutions, roomTypesFor, type Institution, type ListingCardData } from "@/server/listings";
 
 export const metadata: Metadata = { title: "Compare places" };
@@ -22,7 +23,7 @@ export default async function ComparePage({ searchParams }: PageProps<"/compare"
 
   let rows: ListingCardData[] = [];
   let insts: Institution[] = [];
-  let roomTypes = new Map<string, { type: keyof typeof ROOM_TYPE_LABEL; from: number; to: number; free: number }[]>();
+  let roomTypes = new Map<string, RoomTypeRange[]>();
   let error: FriendlyError | null = null;
   try {
     const [cards, i, rt] = await Promise.all([cardsByIds(ids), institutions(), roomTypesFor(ids)]);

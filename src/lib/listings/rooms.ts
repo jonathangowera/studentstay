@@ -1,4 +1,5 @@
-/** Groups a listing's rooms by room type for the details and availability pages. Pure, unit tested. */
+/** Groups rooms by room type for the details, availability and compare pages. Pure, unit tested.
+ * Room types are always listed in ROOM_TYPES order: single, double, triple, quad. */
 import { ROOM_TYPES, type BedState, type RoomType } from "./labels";
 
 export type RoomInput = {
@@ -65,4 +66,33 @@ export function summariseRoomTypes(rooms: RoomInput[]): RoomTypeSummary[] {
       },
     ];
   });
+}
+
+export type RoomTypeRange = { type: RoomType; from: number; to: number; free: number };
+
+/**
+ * Price range and free beds per room type, per listing, for the compare page.
+ * Rows can arrive in any order; each listing's list comes back as single, double, triple, quad.
+ */
+export function roomTypeRangesByListing(
+  rows: { listing_id: string; room_type: RoomType; price_zmw: number | string; beds: { state: string }[] | null }[],
+): Map<string, RoomTypeRange[]> {
+  const grouped = new Map<string, Map<RoomType, RoomTypeRange>>();
+  for (const r of rows) {
+    const byType = grouped.get(r.listing_id) ?? new Map<RoomType, RoomTypeRange>();
+    const price = Number(r.price_zmw);
+    const free = (r.beds ?? []).filter((b) => b.state === "available").length;
+    const found = byType.get(r.room_type);
+    if (found) {
+      found.from = Math.min(found.from, price);
+      found.to = Math.max(found.to, price);
+      found.free += free;
+    } else byType.set(r.room_type, { type: r.room_type, from: price, to: price, free });
+    grouped.set(r.listing_id, byType);
+  }
+  const out = new Map<string, RoomTypeRange[]>();
+  for (const [id, byType] of grouped) {
+    out.set(id, ROOM_TYPES.flatMap((t) => (byType.has(t) ? [byType.get(t)!] : [])));
+  }
+  return out;
 }

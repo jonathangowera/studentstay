@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { floorLabel, summariseRoomTypes, type RoomInput } from "./rooms";
+import { floorLabel, roomTypeRangesByListing, summariseRoomTypes, type RoomInput } from "./rooms";
 
 const room = (type: RoomInput["room_type"], price: number, states: RoomInput["beds"][number]["state"][], floor: number | null = 1, wing: string | null = null): RoomInput => ({
   room_type: type,
@@ -42,5 +42,33 @@ describe("summariseRoomTypes", () => {
 
   it("returns nothing for a listing without rooms", () => {
     expect(summariseRoomTypes([])).toEqual([]);
+  });
+});
+
+describe("roomTypeRangesByListing", () => {
+  it("lists room types single, double, triple, quad whatever order the rows arrive in", () => {
+    const out = roomTypeRangesByListing([
+      { listing_id: "a", room_type: "quad", price_zmw: 800, beds: [] },
+      { listing_id: "a", room_type: "single", price_zmw: "1700.00", beds: [{ state: "occupied" }] },
+      { listing_id: "a", room_type: "triple", price_zmw: 1000, beds: [{ state: "available" }, { state: "available" }] },
+      { listing_id: "a", room_type: "double", price_zmw: 1350, beds: [{ state: "available" }] },
+      { listing_id: "a", room_type: "double", price_zmw: 1500, beds: [{ state: "held" }, { state: "available" }] },
+      { listing_id: "b", room_type: "triple", price_zmw: 900, beds: null },
+      { listing_id: "b", room_type: "double", price_zmw: 1200, beds: [] },
+    ]);
+    expect(out.get("a")!.map((r) => r.type)).toEqual(["single", "double", "triple", "quad"]);
+    expect(out.get("b")!.map((r) => r.type)).toEqual(["double", "triple"]);
+    expect(out.get("a")![1]).toEqual({ type: "double", from: 1350, to: 1500, free: 2 });
+    expect(out.get("a")![0]).toEqual({ type: "single", from: 1700, to: 1700, free: 0 });
+  });
+
+  it("orders the details and availability summary the same way", () => {
+    const room = (room_type: RoomInput["room_type"]): RoomInput => ({ room_type, price_zmw: 1000, wing: null, floor: null, beds: [] });
+    expect(summariseRoomTypes([room("triple"), room("quad"), room("single"), room("double")]).map((t) => t.type)).toEqual([
+      "single",
+      "double",
+      "triple",
+      "quad",
+    ]);
   });
 });

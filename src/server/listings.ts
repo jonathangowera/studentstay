@@ -17,6 +17,7 @@ import type { Database } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { listingQueryPlan, roomMatchFor, roomQueryPlan, type ListingFilters, type QueryPlan } from "@/lib/listings/filters";
 import { isUuid } from "@/lib/listings/compare";
+import { roomTypeRangesByListing, type RoomTypeRange } from "@/lib/listings/rooms";
 import type { BedState, RoomType } from "@/lib/listings/labels";
 
 type Client = SupabaseClient<Database>;
@@ -266,30 +267,17 @@ export const listingDetail = cache(async (id: string): Promise<ListingDetail | n
   return { card: { ...card, id: card.id }, listing: listingRes.data, rooms, distances };
 });
 
-/** Room types offered by each listing, with their price range, for the compare page. */
-export async function roomTypesFor(ids: readonly string[]): Promise<Map<string, { type: RoomType; from: number; to: number; free: number }[]>> {
-  const out = new Map<string, { type: RoomType; from: number; to: number; free: number }[]>();
+/** Room types offered by each listing, with their price range, for the compare page (single to quad). */
+export async function roomTypesFor(ids: readonly string[]): Promise<Map<string, RoomTypeRange[]>> {
   const valid = ids.filter(isUuid);
-  if (!valid.length) return out;
+  if (!valid.length) return new Map();
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("rooms")
     .select("listing_id, room_type, price_zmw, beds(state)")
     .in("listing_id", valid);
   if (error) throw error;
-  for (const r of data ?? []) {
-    const list = out.get(r.listing_id) ?? [];
-    const price = Number(r.price_zmw);
-    const free = (r.beds ?? []).filter((b) => b.state === "available").length;
-    const found = list.find((x) => x.type === r.room_type);
-    if (found) {
-      found.from = Math.min(found.from, price);
-      found.to = Math.max(found.to, price);
-      found.free += free;
-    } else list.push({ type: r.room_type, from: price, to: price, free });
-    out.set(r.listing_id, list);
-  }
-  return out;
+  return roomTypeRangesByListing(data ?? []);
 }
 
 // ---------------------------------------------------------------- shortlist
