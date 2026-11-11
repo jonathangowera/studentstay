@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { reportError } from "@/lib/errors";
 import type { FormState } from "@/lib/form-state";
 import { ROLE_HOME } from "@/lib/auth/roles";
-import { parseBusiness, parseProfile, resetsConfirmation } from "@/lib/validation";
+import { parseBusiness, parseNewPassword, parseProfile, resetsConfirmation } from "@/lib/validation";
 import { getSession, hasPartner, requireRole } from "@/server/session";
 
 export type ProfileFormState = FormState & { confirmationReset?: boolean };
@@ -60,4 +60,25 @@ export async function createBusiness(_prev: FormState, form: FormData): Promise<
     return { status: "error", message: f.message, reference: f.reference, values };
   }
   redirect("/owner?welcome=1");
+}
+
+/**
+ * Change password for the signed-in person, using their current session.
+ * The password goes straight to Supabase Auth. It is never logged, stored or sent back to the form.
+ */
+export async function changePassword(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await getSession();
+  if (!session) redirect("/sign-in");
+
+  const parsed = parseNewPassword(form);
+  if (!parsed.ok) return { status: "error", errors: parsed.errors };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+  if (error) {
+    // reportError logs only the code and Supabase's message, which never contains the password.
+    const f = reportError("change password", error);
+    return { status: "error", message: f.message, reference: f.reference };
+  }
+  return { status: "success", message: "Your password is changed. Use the new one next time you sign in." };
 }

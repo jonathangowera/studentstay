@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { reportError } from "@/lib/errors";
 import type { FormState } from "@/lib/form-state";
-import { isPasswordValid, isValidEmail, parseSignIn, parseSignUp } from "@/lib/validation";
+import { isValidEmail, parseNewPassword, parseSignIn, parseSignUp } from "@/lib/validation";
 import { safeNextPath } from "@/lib/auth/roles";
 import { destinationForUser } from "@/server/session";
 import { siteOrigin } from "@/server/origin";
@@ -93,12 +93,9 @@ export async function requestPasswordReset(_prev: FormState, form: FormData): Pr
 }
 
 export async function updatePassword(_prev: FormState, form: FormData): Promise<FormState> {
-  const password = String(form.get("password") ?? "");
-  const confirm = String(form.get("confirm") ?? "");
-  if (!isPasswordValid(password)) {
-    return { status: "error", errors: { password: "Use 8 or more characters with a letter and a number." } };
-  }
-  if (password !== confirm) return { status: "error", errors: { confirm: "The two passwords do not match." } };
+  const parsed = parseNewPassword(form);
+  if (!parsed.ok) return { status: "error", errors: parsed.errors };
+  const { password } = parsed.data;
 
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();

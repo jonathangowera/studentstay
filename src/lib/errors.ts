@@ -53,6 +53,7 @@ export const MESSAGES: Record<string, string> = {
   over_request_rate_limit: "Too many attempts. Wait a few minutes and try again.",
   email_address_invalid: "Enter a valid email address.",
   signup_disabled: "New accounts cannot be created right now.",
+  reauthentication_needed: "Sign out, sign in again, then change your password.",
   session_not_found: "Your session has ended. Please sign in again.",
   session_expired: "Your session has ended. Please sign in again.",
 

@@ -3,6 +3,7 @@ import { ROLE_LABEL } from "@/lib/auth/roles";
 import { reportError } from "@/lib/errors";
 import { ErrorNotice } from "@/components/ui/Callout";
 import type { Session } from "@/server/session";
+import { ChangePasswordForm } from "./ChangePasswordForm";
 import { ProfileForm, type InstitutionOption } from "./ProfileForm";
 
 /** Profile page body for every role. Loads the institution list for students only. */
@@ -53,6 +54,9 @@ export async function ProfileView({ session }: { session: Session }) {
           owner_can_see_profile: p.owner_can_see_profile,
         }}
       />
+      <div className="split" style={{ marginTop: "var(--gap)" }}>
+        <ChangePasswordForm />
+      </div>
     </>
   );
 }

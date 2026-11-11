@@ -23,6 +23,17 @@ export function isPasswordValid(password: string): boolean {
   return password.length <= 72 && passwordRules(password).every((r) => r.met);
 }
 
+/** New password plus the confirm field. Used by the reset page and by Change password on the profile. */
+export function parseNewPassword(form: { get(name: string): unknown }): Parsed<{ password: string }> {
+  const password = typeof form.get("password") === "string" ? (form.get("password") as string) : "";
+  const confirm = typeof form.get("confirm") === "string" ? (form.get("confirm") as string) : "";
+  if (!isPasswordValid(password)) {
+    return { ok: false, errors: { password: "Use 8 or more characters with a letter and a number." } };
+  }
+  if (password !== confirm) return { ok: false, errors: { confirm: "The two passwords do not match." } };
+  return { ok: true, data: { password } };
+}
+
 // ---------------------------------------------------------------- helpers
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
