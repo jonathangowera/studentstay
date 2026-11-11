@@ -147,6 +147,11 @@ export function parseApplicationEdit(form: FormLike): Parsed<Preferences> {
   return { ok: true, data: prefs as Preferences };
 }
 
+/** The review step's "I confirm the details are correct" box. Checked again on the server. */
+export function confirmedDetails(form: FormLike): boolean {
+  return form.get("confirm") === "on";
+}
+
 // ---------------------------------------------------------------- rows written to the database
 
 /** Step 1 (university allocation only): the profile columns to save, or null when nothing changes. */

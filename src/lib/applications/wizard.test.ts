@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   INSERT_COLUMNS,
+  confirmedDetails,
   UPDATE_COLUMNS,
   draftInsertFor,
   draftUpdateFor,
@@ -163,5 +164,13 @@ describe("policyWarnings", () => {
 
   it("has nothing to say when the choices fit", () => {
     expect(policyWarnings({ gender_needed: "female_only", requested_room_type: "triple", budget_zmw: 1600 }, place)).toEqual([]);
+  });
+});
+
+describe("confirmedDetails", () => {
+  it("needs the confirm box ticked", () => {
+    expect(confirmedDetails(form({ confirm: "on" }))).toBe(true);
+    expect(confirmedDetails(form({}))).toBe(false);
+    expect(confirmedDetails(form({ confirm: "yes" }))).toBe(false);
   });
 });

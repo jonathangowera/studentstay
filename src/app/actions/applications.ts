@@ -7,7 +7,7 @@ import { reportError } from "@/lib/errors";
 import type { FieldErrors } from "@/lib/validation";
 import { applyNotice, withdrawNotice, type Notice } from "@/lib/applications/messages";
 import { isApplicationReference } from "@/lib/applications/rules";
-import { parseApplicationEdit, parseNewApplication } from "@/lib/applications/wizard";
+import { confirmedDetails, parseApplicationEdit, parseNewApplication } from "@/lib/applications/wizard";
 import { isUuid } from "@/lib/listings/compare";
 import { allInstitutions } from "@/server/applications";
 import { applyNew, editAndResubmit, withdraw, type ApplyOutcome } from "@/server/apply";
@@ -43,6 +43,10 @@ export async function submitApplication(_prev: ApplyState, form: FormData): Prom
   const reference = text(form, "reference");
   const session = await requireRole("student", mode === "edit" && isApplicationReference(reference) ? `/apply?application=${reference}` : "/apply");
   const supabase = await createClient();
+
+  if (!confirmedDetails(form)) {
+    return { status: "error", errors: { confirm: "Tick the box to confirm your details." }, notice: { message: "Check the highlighted fields." } };
+  }
 
   let outcome: ApplyOutcome;
   let listingId: string | null = null;
