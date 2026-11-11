@@ -122,6 +122,9 @@ async function listingIdsWithMatchingRoom(supabase: Client, filters: ListingFilt
   return [...new Set(((data ?? []) as unknown as { listing_id: string }[]).map((r) => r.listing_id))];
 }
 
+/** PostgREST: "Requested range not satisfiable", the offset is past the last row. */
+const PAGE_PAST_END = "PGRST103";
+
 export type SearchResult = { rows: ListingCardData[]; total: number; ms: number };
 
 /** Filtered, sorted, paged rows plus the exact total. One round trip, or two when room type and budget are both set. */
@@ -132,8 +135,17 @@ export async function searchListings(filters: ListingFilters, client?: Client): 
   if (roomListingIds && roomListingIds.length === 0) {
     return { rows: [], total: 0, ms: Math.round(performance.now() - started) };
   }
+  const plan = listingQueryPlan(filters, { roomListingIds });
   const base = supabase.from("listing_cards").select(CARD_COLUMNS, { count: "exact" });
-  const { data, count, error } = await applyPlan(base, listingQueryPlan(filters, { roomListingIds }));
+  const { data, count, error } = await applyPlan(base, plan);
+  if (error && error.code === PAGE_PAST_END) {
+    // A page number past the last result (an old link, or ?page=99). Count the matches so the page can say
+    // "There is no page with that number" and link to page 1, instead of showing a load error.
+    const head = supabase.from("listing_cards").select("id", { count: "exact", head: true });
+    const counted = await applyFilters(head, plan.filters);
+    if (counted.error) throw counted.error;
+    return { rows: [], total: counted.count ?? 0, ms: Math.round(performance.now() - started) };
+  }
   const ms = Math.round(performance.now() - started);
   if (error) throw error;
   return { rows: withId(data), total: count ?? 0, ms };
