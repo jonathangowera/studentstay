@@ -622,6 +622,8 @@ fieldset {
 /* table */
 .tbl-wrap {
   overflow-x: auto;
+  /* Keeps absolutely positioned children (sr-only text) inside the scroller, so the page never scrolls sideways. */
+  position: relative;
 }
 .tbl {
   border-collapse: collapse;
@@ -683,6 +685,12 @@ fieldset {
   width: 2rem;
   height: 2rem;
   color: var(--ink-2);
+}
+.empty .empty-t {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
 }
 .empty p {
   color: var(--ink-2);
