@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
+import { filtersToParams, parseListingFilters } from "@/lib/listings/filters";
 
 export const FILTER_FORM_ID = "listing-filters";
 
@@ -27,13 +28,16 @@ function syncForm(form: HTMLFormElement, params: URLSearchParams) {
   }
 }
 
-/** FormData -> query string, leaving out empty values so URLs stay short. */
+/**
+ * FormData -> the canonical query string the server would redirect to (defaults such as sort=best left out),
+ * so a change costs one navigation, not a navigation and a redirect.
+ */
 function toQuery(form: HTMLFormElement): string {
   const params = new URLSearchParams();
   for (const [k, v] of new FormData(form)) {
     if (typeof v === "string" && v.trim() !== "") params.append(k, v.trim());
   }
-  return params.toString();
+  return filtersToParams(parseListingFilters(params)).toString();
 }
 
 /**

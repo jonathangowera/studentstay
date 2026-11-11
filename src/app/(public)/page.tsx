@@ -175,7 +175,7 @@ export default async function HomePage() {
                   Track the owner&rsquo;s decision in your dashboard
                 </li>
               </ul>
-              <Link className="btn" href="/listings?type=private_rental&type=recognised_boarding_house">
+              <Link className="btn" href="/listings?type=recognised_boarding_house&type=private_rental">
                 <span>Browse private rentals</span>
                 <Icon name="arrow-r" />
               </Link>

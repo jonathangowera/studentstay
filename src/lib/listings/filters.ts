@@ -173,6 +173,16 @@ export function listingsHref(f: ListingFilters, changes: Partial<ListingFilters>
 }
 
 /** True when any filter that narrows the results is set (sort, view and page do not count). */
+/**
+ * The canonical /listings address for a query string, or null when it is already canonical.
+ * Used by src/proxy.ts to redirect before the page starts streaming (a real 307, not a client-side redirect).
+ */
+export function canonicalListingsUrl(search: URLSearchParams): string | null {
+  const canonical = filtersToParams(parseListingFilters(search)).toString();
+  if (canonical === search.toString()) return null;
+  return canonical ? `/listings?${canonical}` : "/listings";
+}
+
 export function hasActiveFilters(f: ListingFilters): boolean {
   return (
     f.institution !== null ||

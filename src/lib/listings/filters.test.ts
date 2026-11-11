@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_FILTERS,
+  canonicalListingsUrl,
   effectiveSort,
   filtersToParams,
   hasActiveFilters,
@@ -295,5 +296,24 @@ describe("room type and budget together", () => {
     expect(() => listingQueryPlan(parse("room=double&max=1500"))).toThrow();
     expect(roomMatchFor(parse("room=double"))).toBeNull();
     expect(roomMatchFor(parse("max=1500"))).toBeNull();
+  });
+});
+
+describe("canonicalListingsUrl", () => {
+  const canon = (qs: string) => canonicalListingsUrl(new URLSearchParams(qs));
+  it("returns null for an address that is already canonical", () => {
+    expect(canon("")).toBeNull();
+    expect(canon("max=1500&room=double")).toBeNull();
+  });
+  it("treats the fixed links on the home page as canonical", () => {
+    for (const qs of ["type=university_hostel", "type=recognised_boarding_house&type=private_rental", "free=1", "institution=UNZA"]) {
+      expect(canon(qs)).toBeNull();
+    }
+  });
+  it("rewrites budget bands, defaults, order and junk", () => {
+    expect(canon("budget=0-1500")).toBe("/listings?max=1500");
+    expect(canon("room=double&max=1500")).toBe("/listings?max=1500&room=double");
+    expect(canon("sort=best&page=1")).toBe("/listings");
+    expect(canon("room=castle")).toBe("/listings");
   });
 });
