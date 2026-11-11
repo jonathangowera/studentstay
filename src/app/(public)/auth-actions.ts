@@ -22,7 +22,7 @@ export async function signIn(_prev: FormState, form: FormData): Promise<FormStat
     // Same words for every credential problem, so the form does not reveal which accounts exist.
     // Only an outage (no status or 5xx) gets the generic message, with a reference to look up.
     const status = (error as { status?: number } | null)?.status;
-    if (status === undefined || status >= 500) {
+    if (!status || status >= 500) {
       const f = reportError("sign in", error);
       return { status: "error", message: f.message, reference: f.reference, values: { email } };
     }
