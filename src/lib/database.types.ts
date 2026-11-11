@@ -1393,6 +1393,7 @@ export type Database = {
           beds_total: number | null
           distances: Json | null
           facilities: string[] | null
+          free_room_types: Database["public"]["Enums"]["room_type"][] | null
           gender: Database["public"]["Enums"]["gender_policy"] | null
           gender_note: string | null
           id: string | null
@@ -1403,6 +1404,7 @@ export type Database = {
           price_from: number | null
           price_to: number | null
           rent_unit: string | null
+          room_types: Database["public"]["Enums"]["room_type"][] | null
           type: Database["public"]["Enums"]["listing_type"] | null
           verification: Database["public"]["Enums"]["review_decision"] | null
         }

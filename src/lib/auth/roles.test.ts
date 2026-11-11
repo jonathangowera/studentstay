@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  signupRoleFromParam,
   ROLE_HOME,
   ROLES,
   canAccess,
@@ -117,5 +118,18 @@ describe("signInUrlFor", () => {
   });
   it("drops unsafe targets", () => {
     expect(signInUrlFor("//evil.example")).toBe("/sign-in");
+  });
+});
+
+describe("signupRoleFromParam", () => {
+  it("pre-selects owner only for ?role=owner", () => {
+    expect(signupRoleFromParam("owner")).toBe("owner");
+    expect(signupRoleFromParam(["owner", "student"])).toBe("owner");
+  });
+
+  it("falls back to student for anything else", () => {
+    for (const v of [undefined, "", "student", "admin", "system_admin", "technician", "OWNER", " owner"]) {
+      expect(signupRoleFromParam(v)).toBe("student");
+    }
   });
 });

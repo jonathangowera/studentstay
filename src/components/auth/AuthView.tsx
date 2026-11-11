@@ -1,4 +1,5 @@
 import { Icon } from "@/components/ui/Icon";
+import type { SignupRole } from "@/lib/auth/roles";
 import { SignInForm } from "./SignInForm";
 import { SignUpForm } from "./SignUpForm";
 
@@ -7,13 +8,15 @@ export function AuthView({
   next,
   notice,
   createFirst = false,
+  signupRole = "student",
 }: {
   next: string | null;
   notice?: React.ReactNode;
   createFirst?: boolean;
+  signupRole?: SignupRole;
 }) {
   const signIn = <SignInForm key="in" next={next} />;
-  const signUp = <SignUpForm key="up" />;
+  const signUp = <SignUpForm key="up" initialRole={signupRole} />;
   return (
     <div className="wrap main">
       <h1 className="sr-only">{createFirst ? "Create an account" : "Sign in"}</h1>

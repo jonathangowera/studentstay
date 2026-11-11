@@ -26,7 +26,11 @@ export default async function StudentHome(props: PageProps<"/student">) {
       name={p.full_name}
       subtitle="Demonstration data. Your applications and payments will appear here in a later release."
       passwordUpdated={flag(params.password)}
-      links={[{ href: "/student/profile", title: "Profile", text: "Your details, institution and preferences", icon: "user" }]}
+      links={[
+        { href: "/listings", title: "Find a home", text: "Search places near your campus", icon: "search" },
+        { href: "/student/shortlist", title: "Shortlist", text: "Places you saved", icon: "heart" },
+        { href: "/student/profile", title: "Profile", text: "Your details, institution and preferences", icon: "user" },
+      ]}
     >
       <section className="card" aria-labelledby="sn-h">
         <div className="card-h">

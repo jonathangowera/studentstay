@@ -7,6 +7,8 @@ import { SignOutButton } from "./SignOutButton";
 const NAV: Record<Role, NavItem[]> = {
   student: [
     { href: "/student", label: "Home" },
+    { href: "/listings", label: "Find a home" },
+    { href: "/student/shortlist", label: "Shortlist" },
     { href: "/student/profile", label: "Profile" },
   ],
   owner: [

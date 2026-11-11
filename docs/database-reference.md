@@ -34,7 +34,14 @@ If this file and the SQL disagree, the SQL wins. Update this file in the same pu
 | audit_events | Append-only log. Cannot be edited or deleted by anyone. |
 | state_transitions | The allowed state changes, as data. |
 
-Views: `listing_cards` (public, published listings with bed counts, `is_stale`, `distances`) and `private_application_inbox` (what an owner may see of a private applicant).
+Views: `listing_cards` (public, published listings with bed counts, `is_stale`, `distances`, `room_types`, `free_room_types`) and `private_application_inbox` (what an owner may see of a private applicant).
+
+## Reading listings, rooms and beds: always name the columns
+Since `20261112000001_limit_public_columns.sql`, visitors and signed-in users can read only some columns of `beds` and `listings`.
+- Always list the columns you need: `select('id, name, area')`. Never `select('*')` or `select()` with no columns on `listings`, `rooms` or `beds`. On `beds` and `listings` it fails; on `rooms` it is the same rule for consistency.
+- Visitors (`anon`) read `beds`: id, room_id, label, state, created_at. Signed-in users also read state_note, state_changed_at, hold_expires_at. Nobody reads held_for_application_id or state_changed_by from the browser.
+- Visitors read `listings`: id, institution_id, name, type, area, address, description, house_rules, gender, gender_note, facilities, rent_unit, deposit_note, min_stay_note, verification, last_updated_at, lat, lng. Signed-in users also read partner_id, moderation, created_at, updated_at. `moderation_note` is not readable from the browser.
+- Row-level security still decides which rows. Owners who need `moderation_note` will need a grant or a function (to decide in slice S2/S6).
 
 ## State lists
 - `allocation_decision`: pending, approved, modified, rejected, rerun
@@ -178,3 +185,8 @@ Session expiry is not enforced yet. The PRD default (OD-04: 30 minutes for staff
 4. Test as each role before merging. Run Supabase's security advisor and explain any new warning.
 5. Update this file and `docs/StudentStay_Database_Design_v0.9.docx` in the same pull request.
 6. After any change, regenerate the TypeScript types (see CLAUDE.md).
+7. The migration history in the Supabase dashboard uses different timestamps from the file names, because migrations were applied through the dashboard and connector. Do not run supabase db push without repairing the history first. Ask before using the Supabase command line.
+
+## Known gaps
+- Owners cannot read `moderation_note` on `listings`. S2 will add a view limited to listings the person manages.
+- The `shortlist` table does not restrict inserts to students at database level. The screens hide the heart for owners. A later migration will restrict it.
