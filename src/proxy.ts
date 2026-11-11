@@ -12,7 +12,8 @@ export async function proxy(request: NextRequest) {
 
   // Optimistic: signed-out visitors to a role area go to sign in and come back afterwards.
   // The role itself is checked on the server in every page and Server Function (src/server/session.ts).
-  if (!signedIn && isProtectedPath(pathname)) {
+  // /apply is public (it explains who can apply) but needs an account; checking here gives a real redirect.
+  if (!signedIn && (isProtectedPath(pathname) || pathname === "/apply")) {
     const redirect = NextResponse.redirect(new URL(signInUrlFor(pathname + search), request.url));
     response().cookies.getAll().forEach((c) => redirect.cookies.set(c));
     return redirect;

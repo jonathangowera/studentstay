@@ -382,9 +382,9 @@ export function ApplyWizard(props: Props) {
                     aria-invalid={e.budget_zmw ? true : undefined}
                     aria-describedby={["budget-note", err("budget_zmw")].filter(Boolean).join(" ")}
                   />
-                  <span className="hint" id="budget-note">
+                  <p className="hint" id="budget-note">
                     Whole kwacha, like 1500. Hostels are priced per term.
-                  </span>
+                  </p>
                   <FieldError id="budget_zmw-err" message={e.budget_zmw} />
                 </div>
                 <div className="field">

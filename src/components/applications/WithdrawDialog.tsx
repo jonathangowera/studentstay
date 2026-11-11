@@ -41,7 +41,7 @@ export function WithdrawDialog({ reference, route }: { reference: string; route:
             <div className="field">
               <label htmlFor="wd-reason">Reason (optional)</label>
               <textarea id="wd-reason" name="reason" rows={3} maxLength={500} />
-              <span className="hint">Up to 500 characters. Saved with your application.</span>
+              <p className="hint">Up to 500 characters. Saved with your application.</p>
             </div>
             {state.status === "error" && state.message ? (
               <Callout tone="bad" title={state.message} role="alert">
