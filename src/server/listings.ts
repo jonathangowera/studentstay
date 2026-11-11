@@ -9,6 +9,9 @@ import "server-only";
  * - Public pages only show published listings. listing_cards only contains published listings, so it is the gate:
  *   a listing that is not in listing_cards is "not found", even for its owner who could otherwise read the draft.
  */
+import { cache } from "react";
+import { unstable_rethrow } from "next/navigation";
+import { reportError } from "@/lib/errors";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
@@ -182,8 +185,8 @@ export type ListingDetail = {
   distances: { code: string; name: string; km: number; partnered: boolean }[];
 };
 
-/** Null when the id is not a published listing. */
-export async function listingDetail(id: string): Promise<ListingDetail | null> {
+/** Null when the id is not a published listing. Cached for one request (page and metadata share it). */
+export const listingDetail = cache(async (id: string): Promise<ListingDetail | null> => {
   if (!isUuid(id)) return null;
   const supabase = await createClient();
 
@@ -226,7 +229,7 @@ export async function listingDetail(id: string): Promise<ListingDetail | null> {
     .sort((a, b) => a.km - b.km);
 
   return { card: { ...card, id: card.id }, listing: listingRes.data, rooms, distances };
-}
+});
 
 /** Room types offered by each listing, with their price range, for the compare page. */
 export async function roomTypesFor(ids: readonly string[]): Promise<Map<string, { type: RoomType; from: number; to: number; free: number }[]>> {
@@ -256,19 +259,28 @@ export async function roomTypesFor(ids: readonly string[]): Promise<Map<string, 
 
 // ---------------------------------------------------------------- shortlist
 
-/** Which of these listings the signed-in student has saved. Empty for anyone else. */
+/**
+ * Which of these listings the signed-in student has saved. Empty for anyone else.
+ * Never fails the page: if the shortlist cannot be read, hearts show as not saved and the error is logged.
+ */
 export async function savedListingIds(studentId: string | null, ids?: readonly string[]): Promise<Set<string>> {
   if (!studentId) return new Set();
-  const supabase = await createClient();
-  let q = supabase.from("shortlist").select("listing_id").eq("student_id", studentId);
-  if (ids) {
-    const valid = ids.filter(isUuid);
-    if (!valid.length) return new Set();
-    q = q.in("listing_id", valid);
+  try {
+    const supabase = await createClient();
+    let q = supabase.from("shortlist").select("listing_id").eq("student_id", studentId);
+    if (ids) {
+      const valid = ids.filter(isUuid);
+      if (!valid.length) return new Set();
+      q = q.in("listing_id", valid);
+    }
+    const { data, error } = await q;
+    if (error) throw error;
+    return new Set((data ?? []).map((r) => r.listing_id));
+  } catch (err) {
+    unstable_rethrow(err);
+    reportError("load saved listings", err);
+    return new Set();
   }
-  const { data, error } = await q;
-  if (error) throw error;
-  return new Set((data ?? []).map((r) => r.listing_id));
 }
 
 export async function shortlistFor(studentId: string): Promise<{ listing_id: string; created_at: string }[]> {

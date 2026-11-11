@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { unstable_rethrow } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { ListingCard } from "@/components/listings/ListingCard";
 import { ListingImage } from "@/components/listings/ListingImage";
@@ -16,6 +17,7 @@ async function load() {
     const [insts, areas, featured] = await Promise.all([institutions(), listingAreas(), featuredListings(4)]);
     return { insts, areas, featured, error: null };
   } catch (err) {
+    unstable_rethrow(err);
     const f = reportError("load home page", err);
     return { insts: [] as Institution[], areas: [] as string[], featured: [] as ListingCardData[], error: f };
   }
@@ -23,7 +25,7 @@ async function load() {
 
 export default async function HomePage() {
   const [{ insts, areas, featured, error }, viewer] = await Promise.all([load(), getViewer()]);
-  const saved = await savedListingIds(viewer.studentId, featured.map((f) => f.id)).catch(() => new Set<string>());
+  const saved = await savedListingIds(viewer.studentId, featured.map((f) => f.id));
 
   return (
     <>

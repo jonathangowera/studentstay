@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Callout, ErrorNotice } from "@/components/ui/Callout";
@@ -74,6 +74,7 @@ export default async function ListingsPage({ searchParams }: PageProps<"/listing
   try {
     insts = await institutions();
   } catch (err) {
+    unstable_rethrow(err);
     loadError = reportError("load institutions", err);
   }
 
@@ -96,10 +97,11 @@ export default async function ListingsPage({ searchParams }: PageProps<"/listing
     try {
       result = await searchListings(f);
     } catch (err) {
+      unstable_rethrow(err);
       loadError = reportError("search listings", err);
     }
   }
-  const saved = await savedListingIds(viewer.studentId, result.rows.map((r) => r.id)).catch(() => new Set<string>());
+  const saved = await savedListingIds(viewer.studentId, result.rows.map((r) => r.id));
 
   const instName = (code: string) => institutionShortName(code, insts.find((i) => i.code === code)?.name);
   const { distanceNeedsInstitution } = effectiveSort(f);
