@@ -300,7 +300,7 @@ export default async function HomePage() {
             <h2 id="pt-t">Own or manage student housing?</h2>
             <p>Register as a partner to publish rooms, keep bed availability current and handle private applications.</p>
           </div>
-          <Link className="btn primary" href="/sign-up">
+          <Link className="btn primary" href="/sign-up?role=owner">
             <Icon name="building" />
             Register as a partner
           </Link>

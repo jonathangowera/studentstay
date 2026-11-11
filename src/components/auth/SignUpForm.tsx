@@ -6,13 +6,16 @@ import { IDLE } from "@/lib/form-state";
 import { ErrorNotice } from "@/components/ui/Callout";
 import { FieldError } from "@/components/ui/FieldError";
 import { SubmitButton } from "@/components/ui/SubmitButton";
+import type { SignupRole } from "@/lib/auth/roles";
 import { PasswordRules } from "./PasswordRules";
 
-export function SignUpForm() {
+export function SignUpForm({ initialRole = "student" }: { initialRole?: SignupRole }) {
   const [state, action] = useActionState(signUp, IDLE);
   const [password, setPassword] = useState("");
   const e = state.errors ?? {};
-  const role = state.values?.role === "owner" ? "owner" : "student";
+  // After a failed submit, keep what was chosen. Otherwise use the role from the address (?role=owner).
+  const chosen = state.values?.role;
+  const role = chosen === "owner" || chosen === "student" ? chosen : initialRole;
   return (
     <section className="card" aria-labelledby="sign-up-h" id="create-account">
       <div className="card-h">

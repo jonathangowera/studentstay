@@ -31,6 +31,12 @@ export const ROLE_LABEL: Record<Role, string> = {
 export const SIGNUP_ROLES = ["student", "owner"] as const;
 export type SignupRole = (typeof SIGNUP_ROLES)[number];
 
+/** The role to pre-select on the sign-up form from ?role=. Only owner or student; anything else means student. */
+export function signupRoleFromParam(value: string | string[] | undefined): SignupRole {
+  const v = Array.isArray(value) ? value[0] : value;
+  return v === "owner" ? "owner" : "student";
+}
+
 export function isRole(value: unknown): value is Role {
   return typeof value === "string" && (ROLES as readonly string[]).includes(value);
 }

@@ -29,7 +29,7 @@ export function PublicFooter() {
           <h2 id="ft-partners">Partners</h2>
           <ul>
             <li>
-              <Link href="/sign-up">Register as a partner</Link>
+              <Link href="/sign-up?role=owner">Register as a partner</Link>
             </li>
           </ul>
         </nav>
