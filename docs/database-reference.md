@@ -159,10 +159,14 @@ Failures start with a code and a colon, for example `BED_UNAVAILABLE: this bed i
 | `ALREADY_SENT` | Announcement already sent | This announcement has already been sent. |
 | `BED_NOT_FOUND`, `RUN_NOT_FOUND`, `TICKET_NOT_FOUND`, `BAD_DECISION`, `BAD_STATE` | Bad input | Something went wrong. |
 | `AUDIT_IMMUTABLE` | Someone tried to change the audit log | Treat as a bug. |
+| SQLSTATE `23505` on `profiles_student_number_uq` | The student number is already used at that institution | This student number cannot be used. Check it, or contact your accommodation office. (Does not confirm that someone else has it.) |
 Also expect `23514` (a check failed) and `23P01` (an overlap).
 
 ## Defaults the database already applies
 Hold 48 hours for an accepted private application. Listing is stale after 30 days. Ticket target time: high 24 hours, medium 3 days, low 7 days. Reopen within 7 days. Documents keep a retention date 90 days out. A booking made without dates is 180 days from today. Not enforced yet: the 72 hour deposit deadline (`bookings.deposit_due_at` is stored only), the retention deletion job, the scheduled jobs.
+
+## Sessions
+Session expiry is not enforced yet. The PRD default (OD-04: 30 minutes for staff, 12 hours for students) needs Supabase Pro or app-side enforcement. Revisit before real data.
 
 ## Demo accounts (invented, example.com addresses)
 `natasha.mwale` (student, UNZA), `rachael.musongo` (owner of Olympia Park and Northmead), `johnson.kawemba` (UNZA administrator), `joseph.sakala` (technician), `platform.admin` (system administrator), all `@example.com`. They have random passwords that nobody knows. Set one by running SQL in the Supabase SQL Editor, as in the design document, section 2.2. Never put a password in a file, a commit or a chat. Eight more demo people (seven students and a second technician) never sign in.
