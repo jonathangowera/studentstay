@@ -7,7 +7,8 @@ import "server-only";
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
-import type { ApplicationRoute, ApplicationStatus, EventRow } from "@/lib/applications/status";
+import { CLOSED_STATUSES, type ApplicationRoute, type ApplicationStatus, type EventRow } from "@/lib/applications/status";
+import { reportError } from "@/lib/errors";
 import type { Transition } from "@/lib/applications/rules";
 import type { GenderPolicy, RoomType } from "@/lib/listings/labels";
 import { isUuid } from "@/lib/listings/compare";
@@ -307,4 +308,25 @@ export async function shortlistCount(supabase: Client, studentId: string): Promi
     .eq("student_id", studentId);
   if (error) throw error;
   return count ?? 0;
+}
+
+/**
+ * The signed-in student's open application to one place, for "You have applied" on the property pages.
+ * Never fails the page: on an error the Apply button shows as usual and the error is logged.
+ */
+export async function openApplicationForPlace(supabase: Client, studentId: string | null, listingId: string): Promise<string | null> {
+  if (!studentId || !isUuid(listingId)) return null;
+  const { data, error } = await supabase
+    .from("applications")
+    .select("reference, status")
+    .eq("student_id", studentId)
+    .eq("listing_id", listingId)
+    .not("status", "in", `(${CLOSED_STATUSES.join(",")})`)
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    reportError("load open application for place", error);
+    return null;
+  }
+  return data?.reference ?? null;
 }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export type NavItem = { href: string; label: string };
+export type NavItem = { href: string; label: string; count?: number };
 
 export function NavLinks({ items, label }: { items: NavItem[]; label: string }) {
   const pathname = usePathname();
@@ -16,6 +16,12 @@ export function NavLinks({ items, label }: { items: NavItem[]; label: string }) 
       {items.map((i) => (
         <Link key={i.href} href={i.href} aria-current={i.href === current ? "page" : undefined}>
           {i.label}
+          {i.count ? (
+            <span className="nav-count">
+              {i.count > 99 ? "99+" : i.count}
+              <span className="sr-only"> unread</span>
+            </span>
+          ) : null}
         </Link>
       ))}
     </nav>
