@@ -185,3 +185,4 @@ Session expiry is not enforced yet. The PRD default (OD-04: 30 minutes for staff
 4. Test as each role before merging. Run Supabase's security advisor and explain any new warning.
 5. Update this file and `docs/StudentStay_Database_Design_v0.9.docx` in the same pull request.
 6. After any change, regenerate the TypeScript types (see CLAUDE.md).
+7. The migration history in the Supabase dashboard uses different timestamps from the file names, because migrations were applied through the dashboard and connector. Do not run supabase db push without repairing the history first. Ask before using the Supabase command line.
