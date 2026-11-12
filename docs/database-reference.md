@@ -173,6 +173,8 @@ Every read and write uses the signed-in person's own session. No service role.
 | `/owner/listings` | owner | own listings with bed counts (as on `/owner`) | `confirm_listing_availability`, only on the owner's own listing |
 | `/owner/listings/[id]` | owner (404 for another owner's listing, even a published one) | the listing, its `rooms` and `beds` (named columns), `state_transitions` for `bed` | `beds.state` and `beds.state_note`, guarded on the bed's current state; `rooms.price_zmw` |
 | `/owner/tickets`, `/admin/tickets` | owner; university administrator | the listings they look after (owner: own businesses; administrator: `listing_distances.partnered` for their institution plus hostels it runs), every `maintenance_tickets` row on them, `list_technicians()` for names, `state_transitions` for `ticket` | `assign_ticket` (offered only when the table allows a move to `assigned`, technician chosen from `list_technicians()`); `set_ticket_status(..., 'escalated')` with a reason (only when the table allows it) |
+| `/system/listings` | system administrator | every listing with `partners(business_name)` and beds by state, `state_transitions` for `listing` | `moderate_listing(..., 'published')` only from `awaiting_moderation`; `moderate_listing(..., 'suspended', note)` with a reason; `submit_listing_for_moderation` ("Return to moderation") for `suspended` or `requires_review` |
+| `/system/users` | system administrator | `profiles` (name, role, institution name). Read only; no contact details | none |
 | `/system` | system administrator | head counts per state on `profiles`, `listings`, `applications`, `maintenance_tickets`, `beds`; the latest 10 `audit_events` with names | none |
 
 Rules the screens follow:
@@ -228,6 +230,8 @@ App-level checks (not raised by the database, mapped in `src/lib/errors.ts`):
 | `NOT_ALLOWED` (owner or administrator, checked before the call) | The ticket is not on a property they look after | You can only manage repair requests on properties you look after. |
 | `INVALID_TRANSITION` (owner bed change) | Not one of the agreed moves from the bed's current state, or refused by the trigger | That change is not possible from the bed's current state. Refresh the page to see the latest state. |
 | `STATE_CHANGED` | The bed's state changed between reading and saving; nothing was updated | This bed changed while you were looking. Refresh the page and try again. |
+| `INVALID_TRANSITION` (system listing moderation) | Publish on anything but `awaiting_moderation`, or a move the table does not allow | That change is not possible from the listing's current state. Refresh the page to see the latest state. |
+| `NOTE_REQUIRED` (suspend) | Suspend without a reason (checked in the form and by `moderate_listing`) | Give a reason. The owner sees it. |
 | `NOT_A_TECHNICIAN` (checked before the call) | The chosen person is not in `list_technicians()` | Choose a technician from the list. |
 | `REOPEN_WINDOW_PASSED` (student, checked before the call) | More than 7 days since completion, or `state_transitions` has no `completed` to `reopened` | This request can no longer be reopened. Please report a new one. |
 

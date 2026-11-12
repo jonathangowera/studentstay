@@ -22,6 +22,8 @@ import OwnerTickets from "./(owner)/owner/tickets/page";
 import AdminTickets from "./(admin)/admin/tickets/page";
 import OwnerListings from "./(owner)/owner/listings/page";
 import OwnerListing from "./(owner)/owner/listings/[id]/page";
+import SystemListings from "./(system)/system/listings/page";
+import SystemUsers from "./(system)/system/users/page";
 
 type AnyPage = (props: { params: Promise<Record<string, string>>; searchParams: Promise<Record<string, string>> }) => Promise<unknown>;
 
@@ -36,6 +38,8 @@ const PAGES: { name: string; role: Role; page: AnyPage; params: Record<string, s
   { name: "/owner/tickets", role: "owner", page: OwnerTickets as unknown as AnyPage, params: {} },
   { name: "/admin/tickets", role: "university_admin", page: AdminTickets as unknown as AnyPage, params: {} },
   { name: "/owner/listings", role: "owner", page: OwnerListings as unknown as AnyPage, params: {} },
+  { name: "/system/listings", role: "system_admin", page: SystemListings as unknown as AnyPage, params: {} },
+  { name: "/system/users", role: "system_admin", page: SystemUsers as unknown as AnyPage, params: {} },
   { name: "/owner/listings/[id]", role: "owner", page: OwnerListing as unknown as AnyPage, params: { id: "77777777-7777-4777-8777-777777777777" } },
 ];
 

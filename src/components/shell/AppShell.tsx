@@ -40,6 +40,8 @@ const NAV: Record<Role, NavItem[]> = {
   ],
   system_admin: [
     { href: "/system", label: "Home" },
+    { href: "/system/listings", label: "Listings" },
+    { href: "/system/users", label: "Users" },
     { href: "/system/profile", label: "Profile" },
     { href: "/system/audit", label: "Audit log" },
   ],
