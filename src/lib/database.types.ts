@@ -1530,6 +1530,16 @@ export type Database = {
       owner_of_application: { Args: { p: string }; Returns: boolean }
       owns_listing: { Args: { p: string }; Returns: boolean }
       publish_announcement: { Args: { p_id: string }; Returns: number }
+      record_recommendation: {
+        Args: {
+          p_app: string
+          p_candidates: Json
+          p_explanation: string
+          p_rule: string
+          p_run_by?: string
+        }
+        Returns: string
+      }
       record_simulated_payment: {
         Args: {
           p_amount: number

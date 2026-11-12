@@ -66,7 +66,9 @@ export function ScoreBars({ scores }: { scores: Scores }) {
   return (
     <ul className="scores">
       {SCORE_ROWS.map((r) => {
-        const v = Math.max(0, Math.min(100, Math.round(scores[r.key])));
+        // Scores have one decimal (98.5). Show it when there is one; the bar uses the exact value.
+        const raw = Math.max(0, Math.min(100, Number(scores[r.key]) || 0));
+        const v = Number.isInteger(raw) ? raw : Number(raw.toFixed(1));
         return (
           <li className="score" key={r.key}>
             <span>{r.label}</span>

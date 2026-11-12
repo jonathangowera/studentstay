@@ -42,9 +42,17 @@ export const MESSAGES: Record<string, string> = {
   STUDENT_NUMBER_TAKEN: "This student number cannot be used. Check it, or contact your accommodation office.",
   DUPLICATE_APPLICATION: "You already have an open application to this place.",
 
+  RULE_NOT_ACTIVE: "There is no active allocation rule for your institution.",
+  NOT_UNIVERSITY: "Only university allocation applications can be matched.",
+  APPLICATION_NOT_FOUND: "We could not find that application.",
+  BAD_INPUT: GENERIC,
+
   // App-level checks (not raised by the database)
   UNIVERSITY_APPLICATION_OPEN: "You already have an open university allocation application.",
   WITHDRAW_NOT_ALLOWED: "This application can no longer be withdrawn.",
+  NOT_SUBMITTED: "Only a submitted application can be matched.",
+  APPLICATION_INCOMPLETE: "This application is missing a room type, budget or who can stay. Ask the student to complete it.",
+  SERVICE_ROLE_MISSING: "Matching is not set up on this server. Contact the system administrator.",
 
   // Supabase Auth codes
   invalid_credentials: "Email or password is incorrect.",
@@ -73,7 +81,8 @@ const CONSTRAINT_CODES: Record<string, string> = {
   applications_one_open_per_listing: "DUPLICATE_APPLICATION",
 };
 
-const PREFIX = /^([A-Z][A-Z0-9_]{2,}):/;
+/** "CODE: detail", or a message that is only "CODE" (some functions raise a bare code). */
+const PREFIX = /^([A-Z][A-Z0-9_]{2,})(?::|$)/;
 
 type ErrorLike = { code?: unknown; message?: unknown; details?: unknown };
 
