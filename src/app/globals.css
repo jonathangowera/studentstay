@@ -1284,3 +1284,17 @@ fieldset.field legend { font-weight: 600; font-size: 0.875rem; margin-bottom: 0.
 .dlg-sub { display: block; font-size: 0.8125rem; font-weight: 500; color: var(--ink-2); margin-top: 0.2rem; }
 .row.nowrap { flex-wrap: nowrap; }
 .tbl td b { display: block; }
+.props { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--gap); }
+.h3 { font-size: 1.0625rem; }
+.prop-f { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; flex-wrap: wrap; }
+.prop-f p { font-size: 0.8125rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.rooms { list-style: none; padding: 0; margin: 0; display: grid; gap: 1rem; }
+.room-card { border: 1px solid var(--line); border-radius: var(--r3); padding: 1rem; display: grid; gap: 0.75rem; }
+.room-card h3 { font-size: 1rem; }
+.beds { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
+.beds li { display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 0.6rem 0.75rem; border-radius: var(--r2); background: var(--surface-2); }
+.beds .grow { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; flex: 1 1 14rem; min-width: 0; }
+.beds small { color: var(--ink-2); font-size: 0.75rem; flex-basis: 100%; }
+.price-form .field { gap: 0.25rem; }
+.price-form input { width: 7.5rem; }
+.small { font-size: 0.8125rem; }

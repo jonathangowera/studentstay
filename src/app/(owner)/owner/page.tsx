@@ -104,6 +104,9 @@ export default async function OwnerHome(props: PageProps<"/owner">) {
                   <h2 id="props-h">My properties</h2>
                   <p className="sub">Beds by state. Students see how recently you updated availability.</p>
                 </div>
+                <Link className="btn ghost sm" href="/owner/listings">
+                  Manage listings
+                </Link>
               </div>
               <div className="card-b stack">
                 {data.listings.length ? (

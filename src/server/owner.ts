@@ -142,3 +142,67 @@ export async function openTicketsFor(supabase: Client, listingIds: readonly stri
   if (error) throw error;
   return data ?? [];
 }
+
+export type OwnerBed = { id: string; label: string; state: BedState; state_note: string | null; state_changed_at: string };
+export type OwnerRoom = {
+  id: string;
+  room_number: string;
+  room_type: RoomType;
+  price_zmw: number;
+  wing: string | null;
+  floor: number | null;
+  beds: OwnerBed[];
+};
+export type OwnerListingDetail = Omit<OwnerListing, "beds"> & { partner_id: string; rooms: OwnerRoom[]; bedCounts: BedCounts };
+
+const collator = new Intl.Collator("en", { numeric: true });
+
+/**
+ * One listing with its rooms and beds, only when it belongs to one of the owner's businesses
+ * (other owners' published listings are readable too, so the partner is checked here).
+ */
+export async function ownerListingDetail(supabase: Client, partnerIds: readonly string[], listingId: string): Promise<OwnerListingDetail | null> {
+  const { data, error } = await supabase
+    .from("listings")
+    .select(
+      "id, partner_id, name, type, area, rent_unit, moderation, verification, last_updated_at, rooms(id, room_number, room_type, price_zmw, wing, floor, beds(id, label, state, state_note, state_changed_at))",
+    )
+    .eq("id", listingId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data || !partnerIds.includes(data.partner_id)) return null;
+  const { rooms, ...l } = data;
+  const sortedRooms = (rooms ?? [])
+    .map((r) => ({ ...r, price_zmw: Number(r.price_zmw), beds: [...(r.beds ?? [])].sort((a, b) => collator.compare(a.label, b.label)) }))
+    .sort((a, b) => collator.compare(a.room_number, b.room_number));
+  return { ...l, rooms: sortedRooms, bedCounts: countBeds(sortedRooms.flatMap((r) => r.beds.map((b) => b.state))) };
+}
+
+/** The bed's current state and listing, for the ownership and move check before a change. */
+export async function bedForChange(supabase: Client, bedId: string): Promise<{ id: string; state: BedState; listing_id: string } | null> {
+  const { data, error } = await supabase.from("beds").select("id, state, rooms(listing_id)").eq("id", bedId).maybeSingle();
+  if (error) throw error;
+  if (!data?.rooms) return null;
+  return { id: data.id, state: data.state, listing_id: data.rooms.listing_id };
+}
+
+export async function roomListing(supabase: Client, roomId: string): Promise<string | null> {
+  const { data, error } = await supabase.from("rooms").select("id, listing_id").eq("id", roomId).maybeSingle();
+  if (error) throw error;
+  return data?.listing_id ?? null;
+}
+
+/** Ids of every listing of the owner's businesses. */
+export async function ownerListingIds(supabase: Client, userId: string): Promise<string[]> {
+  const businesses = await ownerBusinesses(supabase, userId);
+  if (!businesses.length) return [];
+  const { data, error } = await supabase
+    .from("listings")
+    .select("id")
+    .in(
+      "partner_id",
+      businesses.map((b) => b.id),
+    );
+  if (error) throw error;
+  return (data ?? []).map((l) => l.id);
+}

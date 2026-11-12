@@ -20,6 +20,7 @@ const NAV: Record<Role, NavItem[]> = {
   ],
   owner: [
     { href: "/owner", label: "Home" },
+    { href: "/owner/listings", label: "Properties" },
     { href: "/owner/applications", label: "Applications" },
     { href: "/owner/tickets", label: "Maintenance" },
     { href: "/owner/profile", label: "Profile" },
