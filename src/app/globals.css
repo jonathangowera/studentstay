@@ -1272,3 +1272,12 @@ textarea { resize: vertical; line-height: 1.5; }
 .grid3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); gap: var(--gap); align-items: start; }
 .tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
 .tbl td small { display: block; }
+.opts.o3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 640px) { .opts.o3 { grid-template-columns: 1fr; } }
+fieldset.field { border: 0; padding: 0; margin: 0; min-width: 0; }
+fieldset.field legend { font-weight: 600; font-size: 0.875rem; margin-bottom: 0.4rem; }
+.tickets { list-style: none; padding: 0; margin: 0; display: grid; gap: 1rem; }
+.tickets > li { border: 1px solid var(--line); border-radius: var(--r3); padding: 1rem; }
+.tickets article { display: grid; gap: 0.75rem; }
+.tickets h3 { font-size: 1rem; }
+.tickets summary { cursor: pointer; font-weight: 600; font-size: 0.875rem; margin-bottom: 0.5rem; }

@@ -17,6 +17,7 @@ import OwnerApplication from "./(owner)/owner/applications/[reference]/page";
 import TechnicianHome from "./(technician)/technician/page";
 import TechnicianTicket from "./(technician)/technician/tickets/[reference]/page";
 import SystemHome from "./(system)/system/page";
+import StudentRepairs from "./(student)/student/repairs/page";
 
 type AnyPage = (props: { params: Promise<Record<string, string>>; searchParams: Promise<Record<string, string>> }) => Promise<unknown>;
 
@@ -27,6 +28,7 @@ const PAGES: { name: string; role: Role; page: AnyPage; params: Record<string, s
   { name: "/technician", role: "technician", page: TechnicianHome as unknown as AnyPage, params: {} },
   { name: "/technician/tickets/[reference]", role: "technician", page: TechnicianTicket as unknown as AnyPage, params: { reference: "TKT-1101" } },
   { name: "/system", role: "system_admin", page: SystemHome as unknown as AnyPage, params: {} },
+  { name: "/student/repairs", role: "student", page: StudentRepairs as unknown as AnyPage, params: {} },
 ];
 
 const props = (params: Record<string, string>) => ({ params: Promise.resolve(params), searchParams: Promise.resolve({}) });

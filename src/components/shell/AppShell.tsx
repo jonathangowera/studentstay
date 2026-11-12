@@ -14,6 +14,7 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/listings", label: "Find a home" },
     { href: "/student/applications", label: "Applications" },
     { href: "/student/shortlist", label: "Shortlist" },
+    { href: "/student/repairs", label: "Repairs" },
     { href: "/student/notifications", label: "Notifications" },
     { href: "/student/profile", label: "Profile" },
   ],

@@ -23,6 +23,7 @@ import {
   type Notification,
   type Targets,
 } from "@/server/applications";
+import { myOpenTicketCount } from "@/server/repairs";
 import { requireRole } from "@/server/session";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -45,10 +46,11 @@ export default async function StudentDashboard(props: PageProps<"/student">) {
     unread: number;
     latest: Notification[];
     institution: string | null;
+    repairs: number;
   } | null = null;
   let errorRef: string | null = null;
   try {
-    const [verified, apps, saved, unread, latest, inst] = await Promise.all([
+    const [verified, apps, saved, unread, latest, inst, repairs] = await Promise.all([
       emailVerified(supabase),
       myApplications(supabase, session.userId),
       shortlistCount(supabase, session.userId),
@@ -57,9 +59,10 @@ export default async function StudentDashboard(props: PageProps<"/student">) {
       p.institution_id
         ? supabase.from("institutions").select("name").eq("id", p.institution_id).maybeSingle()
         : Promise.resolve({ data: null, error: null }),
+      myOpenTicketCount(supabase, session.userId),
     ]);
     if (inst.error) throw inst.error;
-    data = { verified, apps, targets: await targetsFor(supabase, apps), saved, unread, latest, institution: inst.data?.name ?? null };
+    data = { verified, apps, targets: await targetsFor(supabase, apps), saved, unread, latest, institution: inst.data?.name ?? null, repairs };
   } catch (err) {
     unstable_rethrow(err);
     errorRef = reportError("load dashboard", err).reference;
@@ -190,6 +193,21 @@ export default async function StudentDashboard(props: PageProps<"/student">) {
         </div>
 
         <div className="stack">
+          <section className="card" aria-labelledby="rep-h">
+            <div className="card-h">
+              <h2 id="rep-h">Repairs</h2>
+            </div>
+            <div className="card-b stack-s">
+              <p className="muted">
+                {data.repairs
+                  ? `You have ${data.repairs} open repair ${data.repairs === 1 ? "request" : "requests"}.`
+                  : "You have no open repair requests."}
+              </p>
+              <Link className="btn sm" href="/student/repairs">
+                {data.repairs ? "Follow your repairs" : "Report a repair"}
+              </Link>
+            </div>
+          </section>
           {steps.length ? (
             <section className="card" aria-labelledby="next-h">
               <div className="card-h">

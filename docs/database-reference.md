@@ -169,6 +169,7 @@ Every read and write uses the signed-in person's own session. No service role.
 | `/owner/applications/[reference]` | owner | the inbox row, the listing name and rent unit, free beds of that listing (requested room type first) | `decide_private_application`, only while `submitted` or `under_review` |
 | `/technician` | technician | own `maintenance_tickets` (`assigned_to` = the technician) | none |
 | `/technician/tickets/[reference]` | technician | the ticket, `ticket_events` (status, note and time only), `state_transitions` for `ticket` | `set_ticket_status` |
+| `/student/repairs` | student | own reserved or occupied `bookings`, their bed, room and listing (published listings only), own `maintenance_tickets`, their `ticket_events`, `state_transitions` for `ticket` | insert into `maintenance_tickets` (listing_id, bed_id, booking_id, reporter_id, location_text, category, title, description, priority; the place comes from the student's own booking, not the form); `set_ticket_status(..., 'reopened')` within 7 days of completion |
 | `/system` | system administrator | head counts per state on `profiles`, `listings`, `applications`, `maintenance_tickets`, `beds`; the latest 10 `audit_events` with names | none |
 
 Rules the screens follow:
@@ -219,6 +220,8 @@ App-level checks (not raised by the database, mapped in `src/lib/errors.ts`):
 | `ALREADY_DECIDED` (owner, checked before the call) | The inbox row is no longer `submitted` or `under_review` | This application has already been decided. Refresh the page to see its status. |
 | `INVALID_TRANSITION` (technician, checked before the call) | `state_transitions` has no such move from the current status | That change is not possible from the current status. Refresh the page to see the latest status. |
 | `NOT_ALLOWED` (technician, checked before the call) | The ticket is assigned to someone else | You can only update repair requests assigned to you. |
+| `NO_LIVE_BOOKING` | The student has no reserved or occupied booking for the chosen place (also SQLSTATE `42501` from `tkt_insert`) | You can report a repair only for a place you have a reserved or occupied booking for. |
+| `REOPEN_WINDOW_PASSED` (student, checked before the call) | More than 7 days since completion, or `state_transitions` has no `completed` to `reopened` | This request can no longer be reopened. Please report a new one. |
 
 Owner decision messages (`src/lib/owner/messages.ts`): `BED_UNAVAILABLE` "That bed is no longer free. Nothing was saved. Choose another bed.", `BED_REQUIRED` "Choose the bed to hold.", `NOTE_REQUIRED` "Give a reason. The student sees it.", `NOT_ALLOWED` "You can only decide applications sent to your own properties." On success: "A bed is held for 48 hours. The student must now pay the demonstration deposit to confirm it."
 

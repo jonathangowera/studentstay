@@ -35,6 +35,8 @@ export type TicketDetail = QueueTicket & {
   access_notes: string | null;
   status_note: string | null;
   assigned_to: string | null;
+  reporter_id: string;
+  listing_id: string;
   completed_at: string | null;
   updated_at: string;
 };
@@ -43,7 +45,7 @@ export async function ticketByReference(supabase: Client, reference: string): Pr
   const { data, error } = await supabase
     .from("maintenance_tickets")
     .select(
-      "id, reference, location_text, category, title, priority, status, due_at, created_at, description, access_notes, status_note, assigned_to, completed_at, updated_at",
+      "id, reference, location_text, category, title, priority, status, due_at, created_at, description, access_notes, status_note, assigned_to, reporter_id, listing_id, completed_at, updated_at",
     )
     .eq("reference", reference)
     .maybeSingle();
