@@ -76,7 +76,7 @@ export function ReviewBoard({
       {candidates.map((c) => {
         const isTop = c === top;
         return (
-          <article key={c.id} className={`cand${isTop ? " best" : ""}${c.bedId && c.bedId === chosen ? " chosen" : ""}`} aria-labelledby={`cand-${c.id}`}>
+          <article key={c.id} className={`cand${isTop ? " top" : ""}${c.bedId && c.bedId === chosen ? " chosen" : ""}`} aria-labelledby={`cand-${c.id}`}>
             <div className="cand-h">
               <span className="cand-rank" aria-label={`Rank ${c.rank}`}>
                 {c.rank}

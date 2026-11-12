@@ -1211,13 +1211,13 @@ textarea { resize: vertical; line-height: 1.5; }
 @media (max-width: 1100px) { .split.alloc { grid-template-columns: minmax(0, 1fr); } }
 .cand { background: var(--surface); border: 1px solid var(--line); border-radius: var(--rcard, var(--r3)); box-shadow: var(--sh1); }
 .cand + .cand { margin-top: var(--gap); }
-.cand.best { border-color: var(--pri); box-shadow: 0 0 0 3px var(--pri-soft); }
+.cand.top { border-color: var(--pri); box-shadow: 0 0 0 3px var(--pri-soft); }
 .cand.chosen { border-color: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
 .cand-h { display: flex; gap: 0.9rem; align-items: center; padding: var(--pad); flex-wrap: wrap; }
 .cand-h h3 { font-size: 1rem; line-height: 1.3; }
 .cand-h .grow { flex: 1 1 12rem; min-width: 0; }
 .cand-rank { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 50%; background: var(--pri-soft); color: var(--pri-soft-ink); font-weight: 700; flex: none; }
-.cand.best .cand-rank { background: var(--pri); color: var(--pri-ink); }
+.cand.top .cand-rank { background: var(--pri); color: var(--pri-ink); }
 .cand-s { text-align: right; }
 .cand-s b { font-size: 1.75rem; line-height: 1; font-variant-numeric: tabular-nums; }
 .cand-s small { display: block; color: var(--ink-2); font-size: 0.6875rem; }
