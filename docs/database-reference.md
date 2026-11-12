@@ -157,6 +157,33 @@ Code: `src/lib/allocation/engine.ts` (pure, unit tested), loader `src/server/all
 8. Ranking: total, then room number (numerically), then bed label. Top 5 kept with a bed each; excluded rooms kept with their reason, at most 300.
 9. Recommendation is not allocation. A booking exists only after `decide_allocation`.
 
+## Demo dashboards (owner, technician, system administrator)
+Every read and write uses the signed-in person's own session. No service role.
+- `list_technicians()` (owner, university administrator, system administrator): id and full name of every technician, for assigning a repair. Read only.
+- `deposit_quote(p_app)` (the student): which bed waits for the deposit and how much it is. Read only. Not used by a screen yet.
+
+| Screen | Role | Reads | Writes |
+|---|---|---|---|
+| `/owner` | owner (no business: redirect to `/owner/setup`) | `partners`, own `listings` with `rooms(beds(state))` (filtered by `partner_id`, because published listings of others are readable too), `private_application_inbox`, open `maintenance_tickets` of own listings | none |
+| `/owner/applications` | owner | `private_application_inbox` (drafts left out). The view says "Applicant" when the student turned owner visibility off | none |
+| `/owner/applications/[reference]` | owner | the inbox row, the listing name and rent unit, free beds of that listing (requested room type first) | `decide_private_application`, only while `submitted` or `under_review` |
+| `/technician` | technician | own `maintenance_tickets` (`assigned_to` = the technician) | none |
+| `/technician/tickets/[reference]` | technician | the ticket, `ticket_events` (status, note and time only), `state_transitions` for `ticket` | `set_ticket_status` |
+| `/student/repairs` | student | own reserved or occupied `bookings`, their bed, room and listing (published listings only), own `maintenance_tickets`, their `ticket_events`, `state_transitions` for `ticket` | insert into `maintenance_tickets` (listing_id, bed_id, booking_id, reporter_id, location_text, category, title, description, priority; the place comes from the student's own booking, not the form); `set_ticket_status(..., 'reopened')` within 7 days of completion |
+| `/owner/listings` | owner | own listings with bed counts (as on `/owner`) | `confirm_listing_availability`, only on the owner's own listing |
+| `/owner/listings/[id]` | owner (404 for another owner's listing, even a published one) | the listing, its `rooms` and `beds` (named columns), `state_transitions` for `bed` | `beds.state` and `beds.state_note`, guarded on the bed's current state; `rooms.price_zmw` |
+| `/owner/tickets`, `/admin/tickets` | owner; university administrator | the listings they look after (owner: own businesses; administrator: `listing_distances.partnered` for their institution plus hostels it runs), every `maintenance_tickets` row on them, `list_technicians()` for names, `state_transitions` for `ticket` | `assign_ticket` (offered only when the table allows a move to `assigned`, technician chosen from `list_technicians()`); `set_ticket_status(..., 'escalated')` with a reason (only when the table allows it) |
+| `/system/listings` | system administrator | every listing with `partners(business_name)` and beds by state, `state_transitions` for `listing` | `moderate_listing(..., 'published')` only from `awaiting_moderation`; `moderate_listing(..., 'suspended', note)` with a reason; `submit_listing_for_moderation` ("Return to moderation") for `suspended` or `requires_review` |
+| `/system/users` | system administrator | `profiles` (name, role, institution name). Read only; no contact details | none |
+| `/system` | system administrator | head counts per state on `profiles`, `listings`, `applications`, `maintenance_tickets`, `beds`; the latest 10 `audit_events` with names | none |
+
+Rules the screens follow:
+- Owners cannot read `applications`; they see a private application only through `private_application_inbox`.
+- A technician is offered only the moves `state_transitions` allows from the current status, narrowed to `in_progress`, `completed` and `escalated`, and only on a ticket assigned to them (`src/lib/transitions.ts`). Mark completed and Escalate need a note.
+- Technicians and owners cannot read other people's profiles, so the technician page says "Reported by a tenant" and the ticket timeline shows no names. A first name would need a database function (TODO in the page).
+- Bed changes an owner is offered (agreed for the demo, `src/lib/listings/beds.ts`): available to blocked_for_maintenance, blocked_for_maintenance to available, reserved to occupied, occupied to available, each only when `state_transitions` also allows it. Held and pending approval beds show "Set by an application" and offer nothing. Held, pending approval and reserved are never offered as a new state. The update has `.eq('state', <current>)`, so a bed changed in the meantime is not overwritten (`STATE_CHANGED`).
+- Counts use `count: 'exact', head: true` requests, so the 1,000-row page limit never cuts a total short.
+
 ## Error codes
 Failures start with a code and a colon, for example `BED_UNAVAILABLE: this bed is no longer free`. Match on the code. Show a friendly message and a reference code, never the raw text.
 | Code | Meaning | Suggested message |
@@ -195,6 +222,20 @@ App-level checks (not raised by the database, mapped in `src/lib/errors.ts`):
 | `NOT_SUBMITTED` | Matching an application that is not `submitted` | Only a submitted application can be matched. |
 | `APPLICATION_INCOMPLETE` | The application has no room type, budget or who can stay | This application is missing a room type, budget or who can stay. |
 | `SERVICE_ROLE_MISSING` | `SUPABASE_SERVICE_ROLE_KEY` is not set on the server | Matching is not set up on this server. |
+| `APPLICATION_NOT_FOUND` (owner) | The application is not in the owner's inbox | We could not find that application. |
+| `ALREADY_DECIDED` (owner, checked before the call) | The inbox row is no longer `submitted` or `under_review` | This application has already been decided. Refresh the page to see its status. |
+| `INVALID_TRANSITION` (technician, checked before the call) | `state_transitions` has no such move from the current status | That change is not possible from the current status. Refresh the page to see the latest status. |
+| `NOT_ALLOWED` (technician, checked before the call) | The ticket is assigned to someone else | You can only update repair requests assigned to you. |
+| `NO_LIVE_BOOKING` | The student has no reserved or occupied booking for the chosen place (also SQLSTATE `42501` from `tkt_insert`) | You can report a repair only for a place you have a reserved or occupied booking for. |
+| `NOT_ALLOWED` (owner or administrator, checked before the call) | The ticket is not on a property they look after | You can only manage repair requests on properties you look after. |
+| `INVALID_TRANSITION` (owner bed change) | Not one of the agreed moves from the bed's current state, or refused by the trigger | That change is not possible from the bed's current state. Refresh the page to see the latest state. |
+| `STATE_CHANGED` | The bed's state changed between reading and saving; nothing was updated | This bed changed while you were looking. Refresh the page and try again. |
+| `INVALID_TRANSITION` (system listing moderation) | Publish on anything but `awaiting_moderation`, or a move the table does not allow | That change is not possible from the listing's current state. Refresh the page to see the latest state. |
+| `NOTE_REQUIRED` (suspend) | Suspend without a reason (checked in the form and by `moderate_listing`) | Give a reason. The owner sees it. |
+| `NOT_A_TECHNICIAN` (checked before the call) | The chosen person is not in `list_technicians()` | Choose a technician from the list. |
+| `REOPEN_WINDOW_PASSED` (student, checked before the call) | More than 7 days since completion, or `state_transitions` has no `completed` to `reopened` | This request can no longer be reopened. Please report a new one. |
+
+Owner decision messages (`src/lib/owner/messages.ts`): `BED_UNAVAILABLE` "That bed is no longer free. Nothing was saved. Choose another bed.", `BED_REQUIRED` "Choose the bed to hold.", `NOTE_REQUIRED` "Give a reason. The student sees it.", `NOT_ALLOWED` "You can only decide applications sent to your own properties." On success: "A bed is held for 48 hours. The student must now pay the demonstration deposit to confirm it."
 
 Also expect `23514` (a check failed) and `23P01` (an overlap).
 

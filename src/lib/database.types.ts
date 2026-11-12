@@ -1502,10 +1502,28 @@ export type Database = {
         }
         Returns: undefined
       }
+      deposit_quote: {
+        Args: { p_app: string }
+        Returns: {
+          amount_zmw: number
+          bed_label: string
+          hold_expires_at: string
+          listing_name: string
+          rent_unit: string
+          room_number: string
+        }[]
+      }
       email_verified: { Args: never; Returns: boolean }
       escalate_overdue_tickets: { Args: never; Returns: number }
       expire_holds: { Args: never; Returns: number }
       is_sysadmin: { Args: never; Returns: boolean }
+      list_technicians: {
+        Args: never
+        Returns: {
+          full_name: string
+          id: string
+        }[]
+      }
       listing_of_bed: { Args: { p: string }; Returns: string }
       listing_of_booking: { Args: { p: string }; Returns: string }
       listing_of_room: { Args: { p: string }; Returns: string }

@@ -80,6 +80,26 @@ export function verificationBadge(v: ReviewDecision | string | null | undefined)
   }
 }
 
+export type ModerationState = Enums["moderation_state"];
+
+export const MODERATION_STATES: readonly ModerationState[] = ["draft", "awaiting_moderation", "published", "requires_review", "suspended"];
+
+const MODERATION_BADGE: Record<ModerationState, Badge> = {
+  draft: { label: "Draft", tone: "mute", icon: "file" },
+  awaiting_moderation: { label: "Awaiting moderation", tone: "warn", icon: "clock" },
+  published: { label: "Published", tone: "ok", icon: "check-c" },
+  requires_review: { label: "Requires review", tone: "bad", icon: "alert" },
+  suspended: { label: "Suspended", tone: "mute", icon: "ban" },
+};
+
+/** Moderation decides whether students can see a listing. Shown with an icon and text. */
+export function moderationBadge(m: ModerationState | string | null | undefined): Badge {
+  return MODERATION_BADGE[m as ModerationState] ?? { label: "Unknown", tone: "mute", icon: "circle" };
+}
+
+/** The three verification badges, in display order. Grouping by these keeps rule 4's wording. */
+export const VERIFICATION_LABELS = [VERIFIED_LABEL, PENDING_LABEL, REVIEW_LABEL] as const;
+
 /** "No beds available", "1 bed available", "9 beds available". */
 export function bedsBadge(available: number | null | undefined): Badge {
   const n = Number(available ?? 0);
