@@ -23,7 +23,9 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/owner/audit", label: "Audit log" },
   ],
   university_admin: [
-    { href: "/admin", label: "Home" },
+    { href: "/admin", label: "Overview" },
+    { href: "/admin/applications", label: "Applications" },
+    { href: "/admin/rules", label: "Allocation rules" },
     { href: "/admin/profile", label: "Profile" },
     { href: "/admin/audit", label: "Audit log" },
   ],
