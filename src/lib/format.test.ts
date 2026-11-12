@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   daysSince,
+  formatDate,
   formatDateTimeCAT,
   formatDistance,
   formatKm,
@@ -72,5 +73,16 @@ describe("dates in Central Africa Time", () => {
   });
   it("shows the full time with CAT", () => {
     expect(formatDateTimeCAT("2026-11-11T12:05:00Z")).toBe("11 Nov 2026, 14:05 CAT");
+  });
+});
+
+describe("formatDate", () => {
+  it("formats a date column without shifting the day", () => {
+    expect(formatDate("2027-01-12")).toBe("12 Jan 2027");
+    expect(formatDate("2026-12-31")).toBe("31 Dec 2026");
+  });
+  it("returns nothing for bad input", () => {
+    expect(formatDate("12/01/2027")).toBe("");
+    expect(formatDate("")).toBe("");
   });
 });

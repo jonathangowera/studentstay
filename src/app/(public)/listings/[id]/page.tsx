@@ -12,6 +12,8 @@ import { formatKm, formatKwacha, formatUpdated, perUnit, plural, priceRange } fr
 import { GENDER_LABEL, LISTING_TYPE_LABEL, ROOM_TYPE_LABEL, institutionShortName } from "@/lib/listings/labels";
 import { summariseRoomTypes } from "@/lib/listings/rooms";
 import { listingDetail, savedListingIds } from "@/server/listings";
+import { openApplicationForPlace } from "@/server/applications";
+import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/server/viewer";
 
 export async function generateMetadata({ params }: PageProps<"/listings/[id]">): Promise<Metadata> {
@@ -27,7 +29,10 @@ export default async function ListingPage({ params }: PageProps<"/listings/[id]"
 
   const { card, listing, rooms, distances } = detail;
   const name = card.name ?? "Listing";
-  const saved = await savedListingIds(viewer.studentId, [card.id]);
+  const [saved, appliedRef] = await Promise.all([
+    savedListingIds(viewer.studentId, [card.id]),
+    viewer.studentId ? openApplicationForPlace(await createClient(), viewer.studentId, card.id) : Promise.resolve(null),
+  ]);
   const types = summariseRoomTypes(rooms);
   const nearest = distances[0];
   const partnered = distances.filter((d) => d.partnered);
@@ -279,10 +284,18 @@ export default async function ListingPage({ params }: PageProps<"/listings/[id]"
               {card.last_updated_at ? `, ${formatUpdated(card.last_updated_at).toLowerCase()}` : ""}
             </small>
           </p>
-          <Link className="btn primary block" href={applyHref}>
-            <Icon name="file" />
-            <span>Apply for this place</span>
-          </Link>
+          {appliedRef ? (
+            <Link className="btn soft block" href={`/student/applications/${appliedRef}`}>
+              <Icon name="check-c" />
+              <span>You have applied</span>
+              <span className="sr-only">. View application {appliedRef}</span>
+            </Link>
+          ) : (
+            <Link className="btn primary block" href={applyHref}>
+              <Icon name="file" />
+              <span>Apply for this place</span>
+            </Link>
+          )}
           {viewer.heart !== "hidden" ? (
             <div className="fav-row">
               <HeartButton

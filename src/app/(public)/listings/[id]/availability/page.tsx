@@ -9,6 +9,9 @@ import { formatDateTimeCAT, formatKwacha, formatUpdated, perUnit, plural } from 
 import { ROOM_TYPE_LABEL } from "@/lib/listings/labels";
 import { summariseRoomTypes } from "@/lib/listings/rooms";
 import { listingDetail } from "@/server/listings";
+import { openApplicationForPlace } from "@/server/applications";
+import { getViewer } from "@/server/viewer";
+import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata({ params }: PageProps<"/listings/[id]/availability">): Promise<Metadata> {
   const { id } = await params;
@@ -18,8 +21,9 @@ export async function generateMetadata({ params }: PageProps<"/listings/[id]/ava
 
 export default async function AvailabilityPage({ params }: PageProps<"/listings/[id]/availability">) {
   const { id } = await params;
-  const detail = await listingDetail(id);
+  const [detail, viewer] = await Promise.all([listingDetail(id), getViewer()]);
   if (!detail) notFound();
+  const appliedRef = viewer.studentId ? await openApplicationForPlace(await createClient(), viewer.studentId, detail.card.id) : null;
 
   const { card, rooms } = detail;
   const name = card.name ?? "Listing";
@@ -97,7 +101,12 @@ export default async function AvailabilityPage({ params }: PageProps<"/listings/
                         </td>
                         <td>{t.note || "None"}</td>
                         <td>
-                          {t.free > 0 ? (
+                          {appliedRef ? (
+                            <Link className="btn sm soft" href={`/student/applications/${appliedRef}`}>
+                              <Icon name="check-c" />
+                              <span>You have applied</span>
+                            </Link>
+                          ) : t.free > 0 ? (
                             <Link className="btn sm primary" href={`/apply?listing=${card.id}`}>
                               Apply<span className="sr-only"> for a {ROOM_TYPE_LABEL[t.type].toLowerCase()} room</span>
                             </Link>

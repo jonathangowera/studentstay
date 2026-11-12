@@ -88,6 +88,14 @@ export function formatDateTimeCAT(iso: string): string {
   return `${text} CAT`;
 }
 
+/** A date column ("2027-01-12") as "12 Jan 2027". Dates have no time zone, so no CAT conversion. */
+export function formatDate(date: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "";
+  const d = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" }).format(d);
+}
+
 /** "1 place", "8 places". */
 export function plural(n: number, one: string, many: string = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
