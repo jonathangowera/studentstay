@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { addBedCounts, bookedBeds, countBeds, emptyBedCounts, totalBeds } from "./beds";
 import { MODERATION_STATES, moderationBadge } from "./labels";
-import { ticketMessage } from "@/lib/tickets/messages";
+import { manageMessage, ticketMessage } from "@/lib/tickets/messages";
 
 describe("bed counts", () => {
   it("counts each state and keeps zero for the rest", () => {
@@ -37,5 +37,10 @@ describe("ticketMessage", () => {
     expect(ticketMessage("TICKET_NOT_FOUND")).toBe("We could not find that repair request.");
     expect(ticketMessage("REOPEN_WINDOW_PASSED")).toBe("This request can no longer be reopened. Please report a new one.");
     expect(ticketMessage("UNKNOWN")).toBe("Something went wrong. Please try again.");
+  });
+  it("words Assign and Escalate refusals for owners and administrators", () => {
+    expect(manageMessage("NOT_ALLOWED")).toBe("You can only manage repair requests on properties you look after.");
+    expect(manageMessage("NOT_A_TECHNICIAN")).toBe("Choose a technician from the list.");
+    expect(manageMessage("INVALID_TRANSITION")).toMatch(/not possible from the current status/);
   });
 });

@@ -20,3 +20,16 @@ export function ticketMessage(code: string): string {
       return MESSAGES[code] ?? GENERIC;
   }
 }
+
+/** The owner's or administrator's wording for Assign and Escalate. */
+export function manageMessage(code: string): string {
+  switch (code) {
+    case "NOT_ALLOWED":
+    case "42501":
+      return "You can only manage repair requests on properties you look after.";
+    case "NOT_A_TECHNICIAN":
+      return "Choose a technician from the list.";
+    default:
+      return ticketMessage(code);
+  }
+}

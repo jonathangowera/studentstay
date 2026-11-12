@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { TICKET_MOVE, allowedMoves, isTicketReference, parseTicketMove, technicianMoves, type TransitionRow } from "./transitions";
+import {
+  TICKET_MOVE,
+  allowedMoves,
+  isTicketReference,
+  managerMoves,
+  parseManagerMove,
+  parseTicketMove,
+  technicianMoves,
+  type TransitionRow,
+} from "./transitions";
 
 /** The ticket rows from the initial migration, plus one bed row to prove machines are kept apart. */
 const ROWS: TransitionRow[] = [
@@ -58,6 +67,39 @@ describe("technicianMoves", () => {
     expect(TICKET_MOVE.in_progress.label).toBe("Start work");
     expect(TICKET_MOVE.completed.note).toBe("required");
     expect(TICKET_MOVE.escalated.note).toBe("required");
+  });
+});
+
+describe("managerMoves", () => {
+  it("offers Assign from pending, reopened and escalated", () => {
+    expect(managerMoves(ROWS, "pending")).toEqual({ assign: true, escalate: false });
+    expect(managerMoves(ROWS, "reopened")).toEqual({ assign: true, escalate: true });
+    expect(managerMoves(ROWS, "escalated")).toEqual({ assign: true, escalate: false });
+  });
+  it("offers Escalate while assigned or in progress, and nothing on closed tickets", () => {
+    expect(managerMoves(ROWS, "assigned")).toEqual({ assign: false, escalate: true });
+    expect(managerMoves(ROWS, "in_progress")).toEqual({ assign: false, escalate: true });
+    expect(managerMoves(ROWS, "completed")).toEqual({ assign: false, escalate: false });
+    expect(managerMoves(ROWS, "cancelled")).toEqual({ assign: false, escalate: false });
+  });
+});
+
+describe("parseManagerMove", () => {
+  const base = { ticket_id: ID, reference: "TKT-1101" };
+  const TECH = "22222222-2222-4222-8222-222222222222";
+  it("needs a technician to assign; the note is optional", () => {
+    expect(parseManagerMove(form({ ...base, kind: "assign" }))).toEqual({ ok: false, errors: { technician_id: "Choose a technician." } });
+    expect(parseManagerMove(form({ ...base, kind: "assign", technician_id: TECH }))).toEqual({
+      ok: true,
+      data: { kind: "assign", ticketId: ID, reference: "TKT-1101", technicianId: TECH, note: null },
+    });
+  });
+  it("needs a reason to escalate", () => {
+    expect(parseManagerMove(form({ ...base, kind: "escalate" }))).toEqual({ ok: false, errors: { note: "Give a reason for escalating." } });
+    expect(parseManagerMove(form({ ...base, kind: "escalate", note: "No reply for 3 days" })).ok).toBe(true);
+  });
+  it("refuses other kinds, such as cancel", () => {
+    expect(parseManagerMove(form({ ...base, kind: "cancel", note: "x" })).ok).toBe(false);
   });
 });
 

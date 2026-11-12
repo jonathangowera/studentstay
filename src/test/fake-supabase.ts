@@ -12,7 +12,7 @@ const METHODS = ["select", "insert", "update", "eq", "neq", "in", "is", "or", "o
 
 export const USER_ID = "99999999-9999-4999-8999-999999999999";
 
-export function fakeSupabase(role: Role | null, reply: (c: Call) => Reply | undefined = () => undefined) {
+export function fakeSupabase(role: Role | null, reply: (c: Call) => Reply | undefined = () => undefined, profile: Record<string, unknown> = {}) {
   const calls: Call[] = [];
   const builder = (call: Call) => {
     const b: Record<string, unknown> = {};
@@ -29,7 +29,7 @@ export function fakeSupabase(role: Role | null, reply: (c: Call) => Reply | unde
       try {
         // The profile lookup made by getSession is answered here, so tests only describe their own data.
         if (call.table === "profiles" && call.filters.some((f) => f === `eq:"id","${USER_ID}"`)) {
-          return resolve({ data: role ? { id: USER_ID, role, full_name: "Demo Person", institution_id: null } : null, error: null });
+          return resolve({ data: role ? { id: USER_ID, role, full_name: "Demo Person", institution_id: null, ...profile } : null, error: null });
         }
         return resolve({ data: null, error: null, count: null, ...(reply(call) ?? {}) });
       } catch (e) {

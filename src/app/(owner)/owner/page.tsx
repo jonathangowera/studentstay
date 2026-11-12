@@ -186,6 +186,9 @@ export default async function OwnerHome(props: PageProps<"/owner">) {
                               <TicketStatusPill status={t.status} />
                             </div>
                           </div>
+                          <Link className="btn sm soft" href="/owner/tickets">
+                            Manage<span className="sr-only"> {t.reference}</span>
+                          </Link>
                         </li>
                       ))}
                   </ul>

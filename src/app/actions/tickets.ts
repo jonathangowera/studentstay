@@ -5,9 +5,9 @@ import { unstable_rethrow } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { reportError } from "@/lib/errors";
 import type { FieldErrors } from "@/lib/validation";
-import { TICKET_MOVE, isTicketReference, parseTicketMove, technicianMoves } from "@/lib/transitions";
-import { ticketMessage } from "@/lib/tickets/messages";
-import { ticketByReference, transitionsFor } from "@/server/tickets";
+import { TICKET_MOVE, isTicketReference, managerMoves, parseManagerMove, parseTicketMove, technicianMoves } from "@/lib/transitions";
+import { manageMessage, ticketMessage } from "@/lib/tickets/messages";
+import { managedListings, technicians, ticketByReference, transitionsFor } from "@/server/tickets";
 import { requireRole } from "@/server/session";
 
 export type TicketState = {
@@ -54,5 +54,61 @@ export async function setTicketStatusAction(_prev: TicketState, form: FormData):
     unstable_rethrow(err);
     const f = reportError("set ticket status", err);
     return { status: "error", code: f.code, message: ticketMessage(f.code), errorRef: f.reference };
+  }
+}
+
+const MANAGER_HOME = { owner: "/owner/tickets", university_admin: "/admin/tickets" } as const;
+
+/**
+ * An owner or university administrator assigns a ticket of their property to a technician (assign_ticket), or
+ * escalates it (set_ticket_status). The ticket must be in their scope and the move allowed from its status.
+ */
+export async function manageTicketAction(_prev: TicketState, form: FormData): Promise<TicketState> {
+  const from = form.get("from") === "/admin/tickets" ? "/admin/tickets" : "/owner/tickets";
+  const session = await requireRole(["owner", "university_admin"], from);
+  const role = session.role as "owner" | "university_admin";
+
+  const parsed = parseManagerMove(form);
+  if (!parsed.ok) return { status: "error", message: parsed.errors.form ?? "Check the highlighted field.", fieldErrors: parsed.errors };
+  const input = parsed.data;
+
+  try {
+    const supabase = await createClient();
+    const ticket = await ticketByReference(supabase, input.reference);
+    if (!ticket || ticket.id !== input.ticketId) return { status: "error", code: "TICKET_NOT_FOUND", message: ticketMessage("TICKET_NOT_FOUND") };
+    const scope = await managedListings(supabase, { role, userId: session.userId, institutionId: session.profile.institution_id });
+    if (!scope.some((l) => l.id === ticket.listing_id)) return { status: "error", code: "NOT_ALLOWED", message: manageMessage("NOT_ALLOWED") };
+    const moves = managerMoves(await transitionsFor(supabase, "ticket"), ticket.status);
+
+    if (input.kind === "assign") {
+      if (!moves.assign) return { status: "error", code: "INVALID_TRANSITION", message: ticketMessage("INVALID_TRANSITION") };
+      const techs = await technicians(supabase);
+      const tech = techs.find((t) => t.id === input.technicianId);
+      if (!tech) return { status: "error", code: "NOT_A_TECHNICIAN", message: manageMessage("NOT_A_TECHNICIAN"), fieldErrors: { technician_id: "Choose a technician." } };
+      const { error } = await supabase.rpc("assign_ticket", {
+        p_ticket: ticket.id,
+        p_technician: tech.id,
+        ...(input.note ? { p_note: input.note } : {}),
+      });
+      if (error) {
+        const f = reportError("assign ticket", error);
+        return { status: "error", code: f.code, message: manageMessage(f.code), errorRef: f.reference };
+      }
+      revalidatePath(MANAGER_HOME[role]);
+      return { status: "success", message: `${ticket.reference} is assigned to ${tech.full_name}. They were told.` };
+    }
+
+    if (!moves.escalate) return { status: "error", code: "INVALID_TRANSITION", message: ticketMessage("INVALID_TRANSITION") };
+    const { error } = await supabase.rpc("set_ticket_status", { p_ticket: ticket.id, p_new: "escalated", p_note: input.note });
+    if (error) {
+      const f = reportError("escalate ticket", error);
+      return { status: "error", code: f.code, message: manageMessage(f.code), errorRef: f.reference };
+    }
+    revalidatePath(MANAGER_HOME[role]);
+    return { status: "success", message: `${ticket.reference} is escalated. The tenant was told.` };
+  } catch (err) {
+    unstable_rethrow(err);
+    const f = reportError("manage ticket", err);
+    return { status: "error", code: f.code, message: manageMessage(f.code), errorRef: f.reference };
   }
 }

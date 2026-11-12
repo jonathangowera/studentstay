@@ -52,6 +52,38 @@ export function technicianMoves(rows: readonly TransitionRow[], status: TicketSt
   return TECHNICIAN_MOVES.filter((m) => allowed.includes(m));
 }
 
+/**
+ * What an owner or university administrator is offered on a ticket of their property: Assign (assign_ticket moves it
+ * to assigned) and Escalate (set_ticket_status). Each only when state_transitions allows it from the current status.
+ */
+export function managerMoves(rows: readonly TransitionRow[], status: TicketStatus): { assign: boolean; escalate: boolean } {
+  const allowed = allowedMoves(rows, "ticket", status);
+  return { assign: allowed.includes("assigned"), escalate: allowed.includes("escalated") };
+}
+
+export type ManagerInput =
+  | { kind: "assign"; ticketId: string; reference: string; technicianId: string; note: string | null }
+  | { kind: "escalate"; ticketId: string; reference: string; note: string };
+
+/** The owner or administrator form: Assign needs a technician, Escalate needs a reason. */
+export function parseManagerMove(form: FormLike): Parsed<ManagerInput> {
+  const ticketId = text(form, "ticket_id");
+  const reference = text(form, "reference");
+  const kind = text(form, "kind");
+  const technicianId = text(form, "technician_id");
+  const note = text(form, "note");
+  if (!UUID.test(ticketId) || !isTicketReference(reference) || (kind !== "assign" && kind !== "escalate")) {
+    return { ok: false, errors: { form: "Something went wrong. Refresh the page and try again." } };
+  }
+  if (note.length > NOTE_MAX) return { ok: false, errors: { note: `Use ${NOTE_MAX} characters or fewer.` } };
+  if (kind === "assign") {
+    if (!UUID.test(technicianId)) return { ok: false, errors: { technician_id: "Choose a technician." } };
+    return { ok: true, data: { kind, ticketId, reference, technicianId, note: note || null } };
+  }
+  if (!note) return { ok: false, errors: { note: "Give a reason for escalating." } };
+  return { ok: true, data: { kind, ticketId, reference, note } };
+}
+
 export function isTechnicianMove(value: string): value is TechnicianMove {
   return (TECHNICIAN_MOVES as readonly string[]).includes(value);
 }
