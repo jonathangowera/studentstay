@@ -138,16 +138,24 @@ Any other change raises `INVALID_TRANSITION`. They are rows in `state_transition
 | `confirm_student_number(p_student)` | university administrator of that institution | |
 | `publish_announcement(p_id)` | the author | Returns the number of recipients. |
 
+Server only (service role). Called by the allocation engine's server action, never from the browser:
+| Function | Notes |
+|---|---|
+| `record_recommendation(p_app, p_rule, p_explanation, p_candidates jsonb, p_run_by)` | Saves one engine run all or nothing: the run, its candidates (at most 400 rows), the held top bed and the status change (`submitted` to `recommended` to `pending_approval`, or to `no_eligible_room`). Names `p_run_by` as the actor for the call, so the audit log, timeline and bed history show the administrator. Refuses a `p_run_by` who is not a university administrator of the application's institution (`NOT_ALLOWED`). Raises `BAD_INPUT`, `APPLICATION_NOT_FOUND`, `NOT_UNIVERSITY`, `INVALID_TRANSITION`, `RULE_NOT_ACTIVE`, `BED_UNAVAILABLE`. Granted to `service_role` only. |
+
 Server only (service role, scheduled jobs). Never call from the browser: `expire_holds()`, `escalate_overdue_tickets()`, `_commit_booking`, `_notify`, `_release_beds`, `log_audit`.
 
-## The allocation engine (not built yet, slice S5)
-It runs on the server with the service role and must:
-1. Use hard constraints (free bed, gender policy, room type, budget ceiling, institution eligible) to exclude rooms. Every excluded room needs a reason.
-2. Score the rest with the active `allocation_rules` row: room type, budget, distance, facilities, availability confidence. Weights total 100.
-3. Insert one `allocation_runs` row and its `allocation_candidates`. Ranks start at 1 and scores fall as rank rises.
-4. Move the application `submitted` to `recommended` to `pending_approval`, or to `no_eligible_room`. Set the top bed to `pending_approval` with `held_for_application_id`.
-5. Use only room type, budget, distance, facilities and availability to score. Never name, nationality, religion or other personal attributes. Gender is only a hard constraint against the room's policy.
-Recommendation is not allocation. A booking exists only after `decide_allocation`.
+## The allocation engine (slice S5)
+Code: `src/lib/allocation/engine.ts` (pure, unit tested), loader `src/server/allocation/load.ts`, steps `src/server/allocation/run.ts`.
+1. Order: `requireRole('university_admin')`, then with the administrator's OWN session read the application (university allocation, their institution, `submitted`) and the active rule. Only then the service role loads the pool and calls `record_recommendation` with `p_run_by` = the administrator. Decisions (`decide_allocation`) and `confirm_student_number` always use the administrator's own session. The service-role client (`src/server/supabase-admin.ts`) is imported only under `src/server/allocation/`.
+2. Inputs, and only these (PRD FR5.6): the application's institution code, room type, monthly budget, who can stay, preferred facilities; the active rule (weights, `hard_constraints`); each room's id, number, type, price, wing, gender, its listing (rent unit, gender policy, facilities, last updated, distance, partnered) and its beds (state, `held_for_application_id`). Never a name, nationality, religion, student number or other personal detail.
+3. Pool: every room of every published listing partnered with the institution (`listing_distances.partnered`).
+4. Bed: one held or pending for this application, otherwise the lowest available label. A room with no such bed is never ranked, even with `bed_free` switched off.
+5. Term prices are divided by `TERM_MONTHS = 5` (`src/lib/allocation/constants.ts`, TODO(OD): confirm per institution).
+6. Hard constraints (a missing flag counts as on), first failing reason wins: "Not recognised for your institution", "No free bed in this room", "Gender policy: <policy>" (the room's gender, else the listing's), "Room type not requested (<type> room)", "Above your budget (K<monthly> a month)".
+7. Scores 0 to 100, one decimal: room type 100 or 40; budget 100 up to the budget, then 100 - (ratio - 1) * 250 up to 1.2, then 0; distance max(0, 100 - 5 * km); facilities share of the preferred ones (100 if none); availability 100 up to 7 days, 100 - (days - 7) * 40 / 23 up to 30, then 30. Total = weighted sum / 100, two decimals, half up.
+8. Ranking: total, then room number (numerically), then bed label. Top 5 kept with a bed each; excluded rooms kept with their reason, at most 300.
+9. Recommendation is not allocation. A booking exists only after `decide_allocation`.
 
 ## Error codes
 Failures start with a code and a colon, for example `BED_UNAVAILABLE: this bed is no longer free`. Match on the code. Show a friendly message and a reference code, never the raw text.
@@ -171,11 +179,22 @@ Failures start with a code and a colon, for example `BED_UNAVAILABLE: this bed i
 | `EMAIL_NOT_VERIFIED` from `submit_application` | Raised with SQLSTATE `42501`. Match the code before the colon, not the SQLSTATE | Verify your email before applying. |
 | `INVALID_TRANSITION` from `withdraw_application` | The application is already closed | This application can no longer be withdrawn. |
 
+| `RULE_NOT_ACTIVE` | The institution has no active rule, or the rule given is not it | There is no active allocation rule for your institution. |
+| `NOT_UNIVERSITY` | Matching a private application | Only university allocation applications can be matched. |
+| `APPLICATION_NOT_FOUND` (raised without a detail) | No such application | We could not find that application. |
+| `BAD_INPUT` | The candidate list is not a list or too long | Something went wrong. |
+| `BED_UNAVAILABLE` from `record_recommendation` | The top bed was taken while matching; nothing was saved | A bed was taken while matching, so nothing was saved. Run matching again. |
+| `BED_UNAVAILABLE` from `decide_allocation` | The bed was taken before approval; nothing was saved | That bed was just taken. Nothing was saved. (The screen offers the next eligible rooms and Match again.) |
+Codes raised with no detail (for example `NOT_ALLOWED` or `APPLICATION_NOT_FOUND` on their own) are matched too.
+
 App-level checks (not raised by the database, mapped in `src/lib/errors.ts`):
 | Code | Meaning | Message |
 |---|---|---|
 | `UNIVERSITY_APPLICATION_OPEN` | The student already has an open university allocation application | You already have an open university allocation application. (Link to it.) |
 | `WITHDRAW_NOT_ALLOWED` | `state_transitions` has no move from this status to `withdrawn` | This application can no longer be withdrawn. |
+| `NOT_SUBMITTED` | Matching an application that is not `submitted` | Only a submitted application can be matched. |
+| `APPLICATION_INCOMPLETE` | The application has no room type, budget or who can stay | This application is missing a room type, budget or who can stay. |
+| `SERVICE_ROLE_MISSING` | `SUPABASE_SERVICE_ROLE_KEY` is not set on the server | Matching is not set up on this server. |
 
 Also expect `23514` (a check failed) and `23P01` (an overlap).
 
